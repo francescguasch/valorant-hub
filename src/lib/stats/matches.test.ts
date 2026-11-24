@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   agentUsage,
+  bestMaps,
+  matchupStats,
+  roundTypeMetrics,
   compStats,
   currentStreak,
   formatDiff,
@@ -149,5 +152,34 @@ describe("formatting", () => {
     expect(formatDiff(4)).toBe("+4");
     expect(formatDiff(-3)).toBe("−3");
     expect(formatDiff(0)).toBe("0");
+  });
+});
+
+describe("matchups and round types", () => {
+  it("groups our comp against their comp", () => {
+    const rows = [
+      match({ opp_comp_key: "x", our: [7, 6], opp: [4, 5] }),
+      match({ opp_comp_key: "x", our: [4, 6], opp: [5, 8] }),
+      match({ opp_comp_key: "y", our: [7, 6], opp: [4, 5] }),
+    ];
+    const m = matchupStats(rows);
+    expect(m[0]).toMatchObject({ oppKey: "x", played: 2, wins: 1, losses: 1 });
+    expect(m[1]).toMatchObject({ oppKey: "y", played: 1, smallSample: true });
+  });
+  it("finds the best maps for a composition", () => {
+    const rows = [
+      match({ map_id: "ascent", our: [7, 6], opp: [4, 5] }),
+      match({ map_id: "bind", our: [4, 6], opp: [5, 8] }),
+    ];
+    expect(bestMaps(rows, rows[0]!.our_comp_key).map((b) => b.mapId)).toEqual(["ascent"]);
+  });
+  it("ignores matches where a metric wasn't recorded", () => {
+    const a = { ...match({ our: [7, 6], opp: [4, 5] }), pistols_won: 2, anti_eco_won: 3, anti_eco_played: 4 };
+    const b = { ...match({ our: [4, 6], opp: [5, 8] }), pistols_won: 0 };
+    const c = match({ our: [7, 6], opp: [4, 5] });
+    const r = roundTypeMetrics([a, b, c]);
+    expect(r.pistol).toMatchObject({ won: 2, total: 4, rate: 0.5, matches: 2 });
+    expect(r.antiEco).toMatchObject({ won: 3, total: 4, matches: 1 });
+    expect(r.bonus).toMatchObject({ total: 0, rate: null, matches: 0 });
   });
 });

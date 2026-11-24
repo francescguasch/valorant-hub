@@ -35,6 +35,13 @@ export type MatchRow = {
   round_diff: number;
   result: Result;
   is_demo: boolean;
+  pistols_won?: number | null;
+  anti_eco_won?: number | null;
+  anti_eco_played?: number | null;
+  bonus_won?: number | null;
+  bonus_played?: number | null;
+  first_bloods?: number | null;
+  first_blood_wins?: number | null;
 };
 
 /** Below this many maps a percentage is shown with a small-sample warning. */
@@ -230,4 +237,48 @@ export function formatPct(value: number | null, digits = 0): string {
 
 export function formatDiff(n: number): string {
   return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0";
+}
+
+export type Matchup = Record & { key: string; ourKey: string; oppKey: string };
+
+/** Our composition against their composition, both canonical. */
+export function matchupStats(matches: MatchRow[]): Matchup[] {
+  const groups = new Map<string, MatchRow[]>();
+  for (const m of matches) {
+    const key = `${m.our_comp_key}|${m.opp_comp_key}`;
+    groups.set(key, [...(groups.get(key) ?? []), m]);
+  }
+  return [...groups.entries()]
+    .map(([key, rows]) => ({ key, ourKey: rows[0]!.our_comp_key, oppKey: rows[0]!.opp_comp_key, ...record(rows) }))
+    .sort((a, b) => b.played - a.played || (b.winRate ?? 0) - (a.winRate ?? 0));
+}
+
+/** Best maps for one composition: highest win rate, then most played. */
+export function bestMaps(matches: MatchRow[], compKey: string, limit = 2): { mapId: string; wins: number; played: number }[] {
+  return mapStats(matches.filter((m) => m.our_comp_key === compKey))
+    .filter((s) => s.wins > 0)
+    .sort((a, b) => (b.winRate ?? 0) - (a.winRate ?? 0) || b.played - a.played)
+    .slice(0, limit)
+    .map((s) => ({ mapId: s.mapId, wins: s.wins, played: s.played }));
+}
+
+export type RateMetric = { won: number; total: number; rate: number | null; matches: number };
+
+/**
+ * Optional round-type metrics. Each one only uses matches where it was recorded,
+ * so missing data never counts as a loss.
+ */
+export function roundTypeMetrics(matches: MatchRow[]) {
+  const metric = (rows: MatchRow[], won: (m: MatchRow) => number, total: (m: MatchRow) => number): RateMetric => {
+    const w = rows.reduce((s, m) => s + won(m), 0);
+    const t = rows.reduce((s, m) => s + total(m), 0);
+    return { won: w, total: t, rate: ratio(w, t), matches: rows.length };
+  };
+  const has = (v: number | null | undefined): v is number => v !== null && v !== undefined;
+  return {
+    pistol: metric(matches.filter((m) => has(m.pistols_won)), (m) => m.pistols_won!, () => 2),
+    antiEco: metric(matches.filter((m) => has(m.anti_eco_played) && m.anti_eco_played! > 0), (m) => m.anti_eco_won ?? 0, (m) => m.anti_eco_played!),
+    bonus: metric(matches.filter((m) => has(m.bonus_played) && m.bonus_played! > 0), (m) => m.bonus_won ?? 0, (m) => m.bonus_played!),
+    firstBlood: metric(matches.filter((m) => has(m.first_bloods) && m.first_bloods! > 0), (m) => m.first_blood_wins ?? 0, (m) => m.first_bloods!),
+  };
 }

@@ -37,7 +37,8 @@ export type FeedbackItem = {
 export const MATCH_COLUMNS = `id, played_on, created_at::text as created_at, season, competition, match_type, opponent_id,
   series_id, series_format, map_number, map_id, our_agent_ids, opp_agent_ids, our_comp_key, opp_comp_key,
   our_t_rounds, our_ct_rounds, opp_t_rounds, opp_ct_rounds, our_ot_rounds, opp_ot_rounds,
-  our_score, opp_score, round_diff, result, is_demo`;
+  our_score, opp_score, round_diff, result, is_demo,
+  pistols_won, anti_eco_won, anti_eco_played, bonus_won, bonus_played, first_bloods, first_blood_wins`;
 
 /** Everything the Overview needs, read with the viewer's own permissions. */
 export async function loadOverview(viewer: Viewer) {

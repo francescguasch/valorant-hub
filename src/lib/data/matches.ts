@@ -82,8 +82,7 @@ export type PlayerStatRow = {
 
 export async function getMatch(tx: Tx, id: string) {
   const [match] = await tx.unsafe<MatchDetail[]>(
-    `select ${MATCH_COLUMNS}, pistols_won, anti_eco_won, anti_eco_played, bonus_won, bonus_played, first_bloods, first_blood_wins
-     from public.matches where id = $1`,
+    `select ${MATCH_COLUMNS} from public.matches where id = $1`,
     [id],
   );
   if (!match) return null;
@@ -107,4 +106,40 @@ export async function seasonsAndCompetitions(tx: Tx) {
     await tx<{ competition: string }[]>`select distinct competition from public.matches where competition is not null order by competition`
   ).map((r) => r.competition);
   return { seasons, competitions };
+}
+
+export type PlayerAggregate = {
+  player_id: string;
+  maps: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  acs: number | null;
+  adr: number | null;
+  hs_pct: number | null;
+  first_kills: number;
+  first_deaths: number;
+  wins: number;
+};
+
+/** Scoreboard totals per player over the matches that pass the filters. */
+export async function playerAggregates(tx: Tx, f: MatchFilters = {}, playerId?: string): Promise<PlayerAggregate[]> {
+  return tx.unsafe<PlayerAggregate[]>(
+    `select s.player_id, count(*)::int as maps,
+            coalesce(sum(s.kills), 0)::int as kills, coalesce(sum(s.deaths), 0)::int as deaths, coalesce(sum(s.assists), 0)::int as assists,
+            round(avg(s.acs))::int as acs, round(avg(s.adr), 1)::float as adr, round(avg(s.hs_pct), 1)::float as hs_pct,
+            coalesce(sum(s.first_kills), 0)::int as first_kills, coalesce(sum(s.first_deaths), 0)::int as first_deaths,
+            count(*) filter (where m.result = 'W')::int as wins
+     from public.match_player_stats s join public.matches m on m.id = s.match_id
+     where ($1::text is null or m.season = $1)
+       and ($2::text is null or m.match_type::text = $2)
+       and ($3::uuid is null or m.map_id = $3)
+       and ($4::uuid is null or m.opponent_id = $4)
+       and ($5::text is null or m.competition = $5)
+       and ($6::date is null or m.played_on >= $6)
+       and ($7::date is null or m.played_on <= $7)
+       and ($8::uuid is null or s.player_id = $8)
+     group by s.player_id order by avg(s.acs) desc nulls last`,
+    [f.season ?? null, f.type ?? null, f.map ?? null, f.opponent ?? null, f.competition ?? null, f.from ?? null, f.to ?? null, playerId ?? null],
+  );
 }
