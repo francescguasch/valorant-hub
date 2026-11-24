@@ -889,6 +889,17 @@ create trigger player_goals_log after insert or update on public.player_goals
 -- A VOD review can create a feedback task for the player; keep the link.
 alter table public.vod_reviews add column if not exists feedback_id uuid references public.feedback (id) on delete set null;
 
+-- >>> Record the migrations above as applied, so the app only runs newer ones.
+create table if not exists app.schema_migrations (name text primary key, applied_at timestamptz not null default now());
+insert into app.schema_migrations (name) values
+  ('20261124000100_core_schema'),
+  ('20261124000200_security'),
+  ('20261124000300_seed_catalog'),
+  ('20261124000400_demo_data'),
+  ('20261124000500_owner_bootstrap'),
+  ('20261125000100_development_history')
+on conflict (name) do nothing;
+
 -- >>> First owner: the result of this line is a one-time invitation code.
 -- Open <your site>/join, enter it with your email and a password, and you are the owner.
 select app.create_owner_invitation() as owner_invitation_code;

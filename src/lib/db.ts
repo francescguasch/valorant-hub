@@ -1,6 +1,7 @@
 import "server-only";
 import postgres from "postgres";
 import { serverEnv } from "./env";
+import { applyPendingMigrations } from "./migrate";
 
 /**
  * Database access.
@@ -18,6 +19,7 @@ import { serverEnv } from "./env";
 
 declare global {
   var __hubSql: postgres.Sql | undefined;
+  var __hubReady: Promise<unknown> | undefined;
 }
 
 function createPool() {
@@ -38,10 +40,23 @@ export function db(): postgres.Sql {
   return globalThis.__hubSql;
 }
 
+/** Resolves once pending migrations are applied (first call per server instance). */
+function ready(): Promise<unknown> {
+  if (!globalThis.__hubReady) {
+    globalThis.__hubReady = applyPendingMigrations(db()).catch((e) => {
+      globalThis.__hubReady = undefined; // retry on the next request
+      console.error("[migrate] failed", e);
+      throw e;
+    });
+  }
+  return globalThis.__hubReady;
+}
+
 export type Tx = postgres.TransactionSql;
 export type Actor = { userId: string; email?: string | null } | null;
 
 export async function withActor<T>(actor: Actor, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  await ready();
   const result = await db().begin(async (tx) => {
     const claims = actor
       ? { sub: actor.userId, role: "authenticated", email: actor.email ?? undefined }
@@ -54,6 +69,7 @@ export async function withActor<T>(actor: Actor, fn: (tx: Tx) => Promise<T>): Pr
 }
 
 export async function asSystem<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  await ready();
   const result = await db().begin((tx) => fn(tx));
   return result as T;
 }
