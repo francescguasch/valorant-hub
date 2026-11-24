@@ -109,3 +109,53 @@ export function FormAlert({ error, success }: { error?: string | null; success?:
     </div>
   );
 }
+
+export function TextAreaField({
+  label,
+  name,
+  error,
+  hint,
+  className,
+  rows = 4,
+  ...area
+}: ComponentProps<"textarea"> & { label: string; name: string; error?: string; hint?: ReactNode }) {
+  const id = `f-${name}`;
+  return (
+    <div className={clsx("flex flex-col gap-1.5", className)}>
+      <label htmlFor={id} className="text-[13px] font-medium text-fog">
+        {label}
+      </label>
+      <textarea id={id} name={name} rows={rows} className="field resize-y leading-relaxed" aria-invalid={error ? true : undefined} {...area} />
+      {error ? <p className="text-[13px] text-loss">{error}</p> : hint ? <p className="text-[13px] text-dim">{hint}</p> : null}
+    </div>
+  );
+}
+
+export function CheckboxField({
+  label,
+  name,
+  hint,
+  className,
+  ...input
+}: ComponentProps<"input"> & { label: ReactNode; name: string; hint?: ReactNode }) {
+  return (
+    <label className={clsx("flex cursor-pointer items-start gap-2.5", className)}>
+      <input type="checkbox" name={name} className="mt-[3px] size-4 shrink-0 accent-[var(--accent)]" {...input} />
+      <span>
+        <span className="block text-[14.5px] text-bone">{label}</span>
+        {hint ? <span className="block text-[13px] text-dim">{hint}</span> : null}
+      </span>
+    </label>
+  );
+}
+
+export function FormSection({ title, description, children, className }: { title: string; description?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <fieldset className={clsx("min-w-0 border-t border-line pt-6", className)}>
+      <legend className="sr-only">{title}</legend>
+      <h2 className="type-display text-[19px] font-bold text-bone">{title}</h2>
+      {description ? <p className="mt-1 text-[13.5px] text-fog">{description}</p> : null}
+      <div className="mt-4">{children}</div>
+    </fieldset>
+  );
+}

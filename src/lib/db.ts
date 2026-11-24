@@ -59,8 +59,28 @@ export async function asSystem<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
 }
 
 /** Turn a Postgres error into a sentence a coach can act on. */
+const CONSTRAINT_MESSAGES: Record<string, string> = {
+  matches_half_one: "A half has at most 12 rounds: your T rounds plus their CT rounds can't exceed 12.",
+  matches_half_two: "A half has at most 12 rounds: your CT rounds plus their T rounds can't exceed 12.",
+  matches_no_ot_in_scrims: "Scrims don't have overtime. Remove the overtime rounds or change the match type.",
+  matches_ot_after_12_12: "Overtime only happens after 12–12 in regulation.",
+  matches_no_draw_in_competition: "Official and tournament matches can't end in a draw.",
+  matches_anti_eco: "Anti-eco rounds won can't be more than anti-eco rounds played.",
+  matches_bonus: "Bonus rounds won can't be more than bonus rounds played.",
+  matches_first_blood: "Rounds converted after first blood can't be more than first bloods.",
+  players_nickname_key: "Another player already uses that nickname.",
+  opponents_name_key: "An opponent with that name already exists.",
+  maps_name_key: "A map with that name already exists.",
+  agents_name_key: "An agent with that name already exists.",
+  team_roles_name_key: "A role with that name already exists.",
+};
+
 export function friendlyDbError(error: unknown): string {
   const e = error as { code?: string; message?: string; constraint_name?: string };
+  if (e?.constraint_name && CONSTRAINT_MESSAGES[e.constraint_name]) return CONSTRAINT_MESSAGES[e.constraint_name]!;
+  if (e?.code === "23503" && /still referenced|violates foreign key/.test(e.message ?? "")) {
+    return "This is used by other records (for example recorded matches), so it can't be deleted. Hide it instead.";
+  }
   if (e?.code === "42501") return e.message?.includes("row-level security")
     ? "You don't have permission to do that."
     : (e.message ?? "You don't have permission to do that.");

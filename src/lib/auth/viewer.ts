@@ -46,8 +46,10 @@ export const getViewer = cache(async (): Promise<Viewer> => {
 });
 
 export const actorOf = (v: Viewer): Actor => (v.kind === "member" ? { userId: v.userId, email: v.email } : null);
-export const isStaff = (v: Viewer): v is Member => v.kind === "member" && (v.role === "owner" || v.role === "coach");
-export const isOwner = (v: Viewer): v is Member => v.kind === "member" && v.role === "owner";
+export type StaffMember = Member & { role: "owner" | "coach" };
+export type OwnerMember = Member & { role: "owner" };
+export const isStaff = (v: Viewer): v is StaffMember => v.kind === "member" && (v.role === "owner" || v.role === "coach");
+export const isOwner = (v: Viewer): v is OwnerMember => v.kind === "member" && v.role === "owner";
 
 export function safeNext(next: string | null | undefined): string {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";

@@ -75,3 +75,12 @@ export function ResultChip({ result, size = "md" }: { result: "W" | "L" | "D"; s
     </span>
   );
 }
+
+/** Confirmation line shown after a redirect, e.g. "Match saved." */
+export function FormNotice({ children }: { children: ReactNode }) {
+  return (
+    <p role="status" className="mb-6 border border-win/40 bg-win/[0.07] px-4 py-3 text-[14px] text-bone">
+      {children}
+    </p>
+  );
+}

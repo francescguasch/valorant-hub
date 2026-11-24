@@ -9,6 +9,10 @@ export default async function SettingsLayout({ children }: { children: React.Rea
       ? [
           { href: "/settings", label: "Team & branding" },
           { href: "/settings/members", label: "Members" },
+          { href: "/settings/maps", label: "Maps" },
+          { href: "/settings/agents", label: "Agents" },
+          { href: "/settings/roles", label: "Roles" },
+          { href: "/settings/opponents", label: "Opponents" },
         ]
       : []),
     ...(me.role === "owner"
@@ -26,7 +30,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
         description={
           me.role === "player"
             ? "Your name and password."
-            : "Team identity, members and access. Maps, agents, roster and opponents become editable here in phases 2 and 3."
+            : "Team identity, members, maps and rotation, agents, roles, opponents and data. Players are managed in the Roster."
         }
       />
       <SettingsTabs tabs={tabs} />
