@@ -1,0 +1,32 @@
+# Free-plan backup: dumps the whole database twice a week and keeps the file
+# for 90 days as a downloadable artifact of this private repository.
+# Running it also keeps a free Supabase project from pausing for inactivity.
+# Setup: Settings → Secrets and variables → Actions → New repository secret
+#   BACKUP_DATABASE_URL = the "Session pooler" connection string (port 5432).
+name: Database backup
+
+on:
+  schedule:
+    - cron: "17 9 * * 1,4" # Mondays and Thursdays, 09:17 UTC
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    container: postgres:17
+    steps:
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then echo "BACKUP_DATABASE_URL secret is not set; skipping."; exit 0; fi
+          mkdir -p backup
+          pg_dump "$DB_URL" --no-owner --no-privileges --schema=public --schema=app --schema=auth \
+            --file="backup/team-hub-$(date -u +%Y-%m-%d).sql"
+          ls -lh backup
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-hub-backup-${{ github.run_number }}
+          path: backup/
+          retention-days: 90
+          if-no-files-found: ignore
