@@ -12,5 +12,10 @@ const header = `-- =============================================================
 -- =============================================================================
 `;
 const body = files.map((f) => `\n-- >>> ${f}\n${readFileSync(join(dir, f), "utf8").trim()}\n`).join("");
-writeFileSync("supabase/setup.sql", header + body);
+const footer = `
+-- >>> First owner: the result of this line is a one-time invitation code.
+-- Open <your site>/join, enter it with your email and a password, and you are the owner.
+select app.create_owner_invitation() as owner_invitation_code;
+`;
+writeFileSync("supabase/setup.sql", header + body + footer);
 console.log(`supabase/setup.sql written from ${files.length} migrations`);
