@@ -5,6 +5,8 @@ import { withActor } from "@/lib/db";
 import { Panel } from "@/components/ui/panel";
 import { ConfirmAction } from "@/components/ui/confirm";
 import { setDemoData } from "../actions";
+import { buttonClass } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 export const metadata: Metadata = { title: "Data" };
 
@@ -52,7 +54,30 @@ export default async function DataPage() {
         )}
       </Panel>
 
-      <Panel title="Exports and backups" description="CSV and Excel exports arrive with Match Center in phase 2.">
+      <Panel title="Export" description="Download your data. Each file contains only what your account can see.">
+        <div className="flex flex-wrap gap-2">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- file download from a route handler */}
+          <a href="/export/all?format=xlsx" className={buttonClass("primary")}>
+            <Download className="size-4" aria-hidden /> Everything (Excel)
+          </a>
+          {[
+            ["matches", "Matches"],
+            ["player-stats", "Player stats"],
+            ["opponents", "Opponents"],
+            ["strategies", "Strategies"],
+            ["feedback", "Feedback"],
+            ["goals", "Goals"],
+            ["practice", "Practice"],
+            ["vod", "VOD reviews"],
+          ].map(([key, label]) => (
+            <a key={key} href={`/export/${key}?format=csv`} className={buttonClass("secondary")}>
+              {label} (CSV)
+            </a>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel title="Backups">
         <p className="text-fog">
           Supabase keeps daily backups of the database on paid plans only. On the free plan, follow the backup steps in
           the setup guide (docs/SETUP.es.md, section 8) once a week: it saves a complete copy of the database to a file
