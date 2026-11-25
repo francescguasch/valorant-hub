@@ -133,7 +133,7 @@ export function StrategyForm({
         <p className="mb-2 mt-6 text-[13px] font-medium text-fog">Player assignments</p>
         <div className="flex flex-col gap-2">
           {assign.map((a, i) => (
-            <div key={i} className="grid gap-2 sm:grid-cols-[180px_180px_1fr]">
+            <div key={i} className="grid gap-2 sm:grid-cols-[minmax(0,240px)_minmax(0,240px)]">
               <select
                 name={`as_player_${i}`}
                 aria-label={`Assignment ${i + 1} player`}
@@ -155,14 +155,6 @@ export function StrategyForm({
                 agents={agents}
                 onChange={(nv) => setAssign((x) => x.map((y, j) => (j === i ? { ...y, agent: nv } : y)))}
               />
-              <input
-                name={`as_task_${i}`}
-                aria-label={`Assignment ${i + 1} task`}
-                defaultValue={v?.[`as_task_${i}`] ?? initial.assignments[i]?.task ?? ""}
-                placeholder="Task, e.g. smoke heaven + CT, lurk mid"
-                maxLength={400}
-                className="field"
-              />
             </div>
           ))}
         </div>
@@ -175,9 +167,6 @@ export function StrategyForm({
           {longField("timing", "Timing", "e.g. Hit at 1:15, plant by 0:50.", 3)}
           {longField("callouts", "Callouts")}
           <div className="lg:col-span-2">{longField("execution", "Round execution, step by step", "One step per line.", 7)}</div>
-          {longField("alternatives", "Alternative plans")}
-          {longField("common_mistakes", "Common mistakes")}
-          <div className="lg:col-span-2">{longField("coaching_notes", "Coaching notes")}</div>
         </div>
       </FormSection>
 

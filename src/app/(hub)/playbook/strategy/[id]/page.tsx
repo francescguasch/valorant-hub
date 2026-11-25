@@ -42,9 +42,6 @@ export default async function StrategyPage({ params, searchParams }: { params: P
     ["Utility usage", s.utility_usage],
     ["Timing", s.timing],
     ["Callouts", s.callouts],
-    ["Alternative plans", s.alternatives],
-    ["Common mistakes", s.common_mistakes],
-    ["Coaching notes", s.coaching_notes],
   ];
 
   return (
@@ -147,7 +144,6 @@ export default async function StrategyPage({ params, searchParams }: { params: P
                             {a.player_id ? catalog.playerById.get(a.player_id)?.nickname : "Any player"}
                             {agent ? <span className="font-normal text-fog"> · {agent.name}</span> : null}
                           </p>
-                          {a.task ? <p className="text-[14px] text-fog">{a.task}</p> : null}
                         </div>
                       </li>
                     );

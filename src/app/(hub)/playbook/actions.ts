@@ -41,9 +41,9 @@ export async function saveStrategy(_p: FormState, fd: FormData): Promise<FormSta
     .map((i) => ({
       player_id: uuid.safeParse(fd.get(`as_player_${i}`)).success ? String(fd.get(`as_player_${i}`)) : null,
       agent_id: uuid.safeParse(fd.get(`as_agent_${i}`)).success ? String(fd.get(`as_agent_${i}`)) : null,
-      task: clip(fd.get(`as_task_${i}`), 400),
+      task: null,
     }))
-    .filter((a) => a.player_id || a.agent_id || a.task);
+    .filter((a) => a.player_id || a.agent_id);
 
   if (Object.keys(fields).length) return { error: "Check the highlighted fields.", fields };
 
@@ -62,9 +62,6 @@ export async function saveStrategy(_p: FormState, fd: FormData): Promise<FormSta
     timing: clip(fd.get("timing")),
     callouts: clip(fd.get("callouts")),
     execution: clip(fd.get("execution")),
-    alternatives: clip(fd.get("alternatives")),
-    common_mistakes: clip(fd.get("common_mistakes")),
-    coaching_notes: clip(fd.get("coaching_notes")),
     youtube_url: youtube,
   };
 
