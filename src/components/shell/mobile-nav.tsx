@@ -6,7 +6,17 @@ import type { SectionKey } from "@/lib/sections";
 import { NavLinks } from "./nav";
 
 /** Top bar with a slide-in menu for phones and tablets. */
-export function MobileNav({ brand, footer, locked }: { brand: ReactNode; footer: ReactNode; locked: SectionKey[] }) {
+export function MobileNav({
+  brand,
+  footer,
+  actions,
+  locked,
+}: {
+  brand: ReactNode;
+  footer: ReactNode;
+  actions?: ReactNode;
+  locked: SectionKey[];
+}) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -23,16 +33,19 @@ export function MobileNav({ brand, footer, locked }: { brand: ReactNode; footer:
     <div className="lg:hidden">
       <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-rail/95 pr-2 backdrop-blur">
         <div className="min-w-0 [&>a]:py-3">{brand}</div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="grid size-11 place-items-center text-bone"
-          aria-expanded={open}
-          aria-controls="mobile-menu"
-        >
-          <Menu className="size-6" aria-hidden />
-          <span className="sr-only">Open menu</span>
-        </button>
+        <div className="flex shrink-0 items-center">
+          {actions}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="grid size-11 place-items-center text-bone"
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+          >
+            <Menu className="size-6" aria-hidden />
+            <span className="sr-only">Open menu</span>
+          </button>
+        </div>
       </div>
 
       <div
@@ -52,7 +65,11 @@ export function MobileNav({ brand, footer, locked }: { brand: ReactNode; footer:
       >
         <div className="flex items-center justify-between pr-2">
           <div className="min-w-0">{brand}</div>
-          <button type="button" onClick={() => setOpen(false)} className="grid size-11 place-items-center text-fog hover:text-bone">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="grid size-11 place-items-center text-fog hover:text-bone"
+          >
             <X className="size-6" aria-hidden />
             <span className="sr-only">Close menu</span>
           </button>

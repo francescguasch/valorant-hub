@@ -111,7 +111,11 @@ export default async function MembersPage() {
       </div>
 
       <Panel title="Invite someone" description="Create a code and send it privately. It works once." className="self-start">
-        <InviteForm players={players} canInviteStaff={isOwnerViewer} origin={origin} />
+        <InviteForm
+          players={players.filter((pl) => !profiles.some((pr) => pr.player_id === pl.id))}
+          canInviteStaff={isOwnerViewer}
+          origin={origin}
+        />
       </Panel>
     </div>
   );

@@ -106,6 +106,16 @@ export async function createInvitation(_prev: FormState, formData: FormData): Pr
   if (v.role !== "player" && me.role !== "owner") {
     return { error: "Only the team owner can invite coaches or owners.", fields: {} };
   }
+  if (v.role === "player" && v.player_id) {
+    const [taken] = await withActor(actorOf(me), (tx) => tx<{ nickname: string }[]>`
+      select p.nickname from public.profiles pr join public.players p on p.id = pr.player_id where pr.player_id = ${v.player_id}`);
+    if (taken) {
+      return {
+        error: `${taken.nickname} already has an account. If they can't sign in, create a password reset code for them instead.`,
+        fields: {},
+      };
+    }
+  }
   const code = generateCode();
   try {
     await withActor(actorOf(me), (tx) => tx`

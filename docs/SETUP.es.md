@@ -5,83 +5,76 @@ Esta guía pone la web en marcha con tres servicios gratuitos:
 | Servicio | Para qué | Plan |
 |---|---|---|
 | **GitHub** | Guarda el código | Free |
-| **Supabase** | Base de datos, cuentas de usuario e imágenes | Free |
 | **Vercel** | Publica la web en internet | Hobby (gratis) |
+| **Supabase** | Base de datos, cuentas de usuario e imágenes (se crea desde Vercel) | Free |
 
-Tiempo aproximado: 30–40 minutos. No hace falta instalar nada en tu ordenador.
+Tiempo aproximado: 20–30 minutos. No hace falta instalar nada en tu ordenador.
 
 > Los nombres de los botones pueden cambiar un poco con el tiempo. Si no ves exactamente el mismo texto,
 > busca la opción equivalente en el menú lateral.
+
+La instalación de UND ya está hecha: <https://valorant-hub-nu.vercel.app> (código en
+`github.com/francescguasch/valorant-hub`, base de datos Supabase `valorant-hub-db`). Esta guía sirve para
+repetirla, por ejemplo para Hawaii UHE.
 
 ---
 
 ## 1. GitHub: el repositorio
 
 1. Crea una cuenta en <https://github.com> (si no la tienes).
-2. Arriba a la derecha: **+ → New repository**.
-3. Nombre: `und-valorant-hub`. Marca **Private**. No añadas README ni nada más.
-4. Pulsa **Create repository** y pásale a Claude el nombre (`tu-usuario/und-valorant-hub`). Claude sube el código.
+2. Arriba a la derecha: **+ → New repository**, ponle nombre y pulsa **Create repository**.
+3. Sube el código (Claude puede hacerlo si le das el nombre `tu-usuario/tu-repositorio`).
 
-## 2. Supabase: el proyecto
+El repositorio no contiene ninguna clave, así que puede ser público o privado.
 
-1. Entra en <https://supabase.com> → **Start your project** → inicia sesión con GitHub.
-2. **New project**:
-   - Name: `und-valorant-hub`
-   - Database password: pulsa **Generate a password** y **guárdala** en un sitio seguro (la necesitarás en el paso 4).
-   - Region: **East US (North Virginia)**. Es la más cercana a los servidores de Vercel.
-   - Plan: **Free**.
-3. Espera 1–2 minutos a que el proyecto esté listo.
+## 2. Vercel: importar el proyecto
 
-## 3. Crear la base de datos
+1. Entra en <https://vercel.com> → **Sign Up** → **Continue with GitHub**. Elige el plan **Hobby**.
+2. **Add New… → Project** → busca tu repositorio → **Import** → **Deploy**.
+   (Si no aparece, pulsa "Adjust GitHub App Permissions" y dale acceso a ese repositorio.)
+3. El primer despliegue puede fallar o mostrar errores porque aún no hay base de datos. Es normal.
 
-1. En el menú izquierdo de Supabase: **SQL Editor → New query**.
-2. Abre el archivo `supabase/setup.sql` del repositorio en GitHub, pulsa el botón **Copy raw file**
-   y pégalo entero en el editor.
-3. Pulsa **Run**. Debe terminar con "Success". Esto crea todas las tablas, la seguridad, los mapas, los agentes,
-   la plantilla de Dakota y los datos DEMO.
+## 3. Supabase desde Vercel (las claves se ponen solas)
+
+1. En el proyecto de Vercel: pestaña **Storage → Create Database → Supabase** (Marketplace).
+2. Plan **Free**, región **Washington, D.C. (iad1)** (la misma que Vercel), nombre por ejemplo `valorant-hub-db`.
+3. Acepta y conecta la base de datos al proyecto (entornos **Production**, **Preview** y **Development**).
+   Vercel añade automáticamente las variables (`NEXT_PUBLIC_SUPABASE_URL`, `POSTGRES_URL`, claves…). La app las
+   reconoce sin cambiar nada.
+4. **Deployments → … → Redeploy** para que la web use las variables nuevas.
+
+## 4. Crear la base de datos y el código del Owner
+
+1. Desde Vercel: **Storage → tu base de datos → Open in Supabase**.
+2. En Supabase: **SQL Editor → New query**.
+3. Abre `supabase/setup.sql` en GitHub, pulsa **Copy raw file** y pégalo entero en el editor.
+4. Pulsa **Run**. Si Supabase avisa de "Row Level Security", elige **Run without RLS**: el propio script ya activa
+   la seguridad en todas las tablas.
+5. El resultado final es una fila `owner_invitation_code`, por ejemplo `ABCD-EFGH-JKMN`. **Cópiala**: es el código
+   para crear la cuenta del Owner. Caduca en 2 días.
+
+Esto crea todas las tablas, la seguridad, los mapas, los agentes, la plantilla de Dakota y los datos DEMO.
 
 ### Desactivar el registro público
 
-1. Menú izquierdo: **Authentication → Sign In / Providers**.
+1. En Supabase: **Authentication → Sign In / Providers**.
 2. Desactiva **Allow new users to sign up** y guarda.
    (Las cuentas solo se crean con un código de invitación desde la propia web.)
 
-## 4. Copiar las claves
+## 5. Crear la cuenta del Owner (solo una vez)
 
-Necesitas 4 valores. Pégalos de momento en una nota privada.
+1. Abre `https://TU-DIRECCION.vercel.app/join`.
+2. Escribe el código del paso 4, tu email, tu nombre y una contraseña.
+3. Entras directamente como **Owner**.
 
-| Variable | Dónde está en Supabase |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | **Project Settings → Data API**: "Project URL" (`https://xxxx.supabase.co`) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Project Settings → API Keys**: la **Publishable key** (`sb_publishable_…`). Si solo ves claves "legacy", usa la **anon** |
-| `SUPABASE_SERVICE_ROLE_KEY` | Misma página: la **Secret key** (`sb_secret_…`) o la legacy **service_role**. **Es secreta**: no la compartas |
-| `DATABASE_URL` | Botón **Connect** (arriba) → pestaña de cadenas de conexión → **Transaction pooler** (puerto **6543**). Sustituye `[YOUR-PASSWORD]` por la contraseña del paso 2 |
+¿Caducó el código antes de usarlo? En el SQL Editor ejecuta `select app.create_owner_invitation();` y te da otro
+(solo funciona mientras no exista ningún Owner).
 
-Y un quinto valor que inventas tú:
-
-| Variable | Valor |
-|---|---|
-| `SETUP_TOKEN` | Una frase larga y aleatoria (mínimo 16 caracteres), por ejemplo `pizarra-roja-ascent-2026-xk9`. Sirve una sola vez para crear la cuenta del Owner |
-
-## 5. Vercel: publicar la web
-
-1. Entra en <https://vercel.com> → **Sign Up** → **Continue with GitHub**. Elige el plan **Hobby**.
-2. **Add New… → Project** → busca `und-valorant-hub` → **Import**.
-   (Si no aparece, pulsa "Adjust GitHub App Permissions" y dale acceso a ese repositorio.)
-3. Abre **Environment Variables** y añade las 5 variables del paso 4 (nombre exacto + valor).
-4. Pulsa **Deploy**. En 1–2 minutos tendrás una dirección tipo `https://und-valorant-hub.vercel.app`.
-
-## 6. Crear la cuenta del Owner (solo una vez)
-
-1. Abre `https://TU-DIRECCION.vercel.app/setup`.
-2. Escribe el `SETUP_TOKEN`, tu email, tu nombre y una contraseña.
-3. Entras directamente como **Owner**. La página `/setup` queda bloqueada para siempre.
-
-## 7. Invitar al equipo
+## 6. Invitar al equipo
 
 1. **Settings → Members → Invite someone**.
-2. Elige el rol (Player, Coach o Owner). Para jugadores, elige su perfil del roster (Zach, JaxaPixel…) para que vean
-   su propio feedback.
+2. Elige el rol (Player, Coach u Owner). Para jugadores, elige su perfil del roster (Zach, JaxaPixel…) para que vean
+   su propio feedback. Solo aparecen los jugadores que aún no tienen cuenta.
 3. Pulsa **Create invitation code** y envía el código o el enlace por privado (Discord, WhatsApp…).
    El código funciona una sola vez y caduca en los días que elijas.
 4. La persona abre el enlace, escribe su email y contraseña, y entra.
@@ -94,6 +87,16 @@ sin cuenta, sin poder editar. Cámbialo en **Settings → Visitor access**.
 
 **Antes de meter resultados reales:** borra los datos DEMO en **Settings → Data → Remove demo data**.
 
+**Notificaciones:** la campana (abajo a la izquierda en ordenador, arriba en el móvil) avisa de entrenamientos en las
+próximas 48 horas, seguimientos de feedback pendientes, sesiones sin resultados y tareas de VOD abiertas. Se van solas
+cuando el asunto queda resuelto.
+
+## 7. Actualizaciones
+
+Cada vez que se sube código nuevo a la rama `main` de GitHub, Vercel publica la web otra vez en 1–2 minutos.
+Si la actualización trae cambios en la base de datos, **la web los aplica sola** la primera vez que alguien la abre
+(quedan apuntados en `app.schema_migrations`). No hace falta pegar SQL en Supabase.
+
 ## 8. Copias de seguridad (gratis)
 
 El plan Free de Supabase no guarda copias descargables. El repositorio incluye una tarea automática de GitHub que
@@ -102,15 +105,19 @@ veces por semana, evita que Supabase pause el proyecto por inactividad.
 
 Para activarla:
 
-1. En Supabase: **Connect** → copia la cadena **Session pooler** (puerto **5432**) y pon tu contraseña.
+1. En Supabase: **Connect** → copia la cadena **Session pooler** (puerto **5432**) con la contraseña de la base de
+   datos. Si no la sabes: **Project Settings → Database → Reset database password** (después, en Vercel, vuelve a
+   conectar la base de datos para que tenga la nueva).
 2. En GitHub, en tu repositorio: **Settings → Secrets and variables → Actions → New repository secret**.
    - Name: `BACKUP_DATABASE_URL`
    - Secret: la cadena del punto anterior.
 3. Pestaña **Actions → Database backup → Run workflow** para probarla. Cuando termine, la copia aparece como
    archivo descargable ("Artifacts") dentro de esa ejecución.
 
-**Restaurar** (solo si algo sale muy mal): crea un proyecto Supabase nuevo, ejecuta `supabase/setup.sql` vacío de
-datos o pide ayuda técnica para cargar el archivo `.sql` de la copia con `psql`.
+Las exportaciones de **Settings → Data** (Excel con todo, o CSV por tabla) son otra copia sencilla de los datos.
+
+**Restaurar** (solo si algo sale muy mal): crea un proyecto Supabase nuevo y pide ayuda técnica para cargar el
+archivo `.sql` de la copia con `psql`.
 
 ## 9. Cosas a saber del plan gratuito
 
@@ -124,3 +131,17 @@ datos o pide ayuda técnica para cargar el archivo `.sql` de la copia con `psql`
 Todo está en **Settings → Team & branding**: nombre de la universidad, nombre del equipo, textos del inicio, temporada,
 zona horaria (por defecto **America/Chicago**, la hora Central de Grand Forks), foto del campus, logo y colores.
 La foto original del campus siempre se puede recuperar con **Use original photo**.
+
+Mapas en rotación, agentes y roles de jugador: **Settings → Maps / Agents / Roles**.
+
+## Alternativa: claves a mano (sin la integración de Vercel)
+
+Si creas el proyecto directamente en <https://supabase.com>, copia estas variables en
+**Vercel → Settings → Environment Variables** y vuelve a desplegar:
+
+| Variable | Dónde está en Supabase |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | **Project Settings → Data API**: "Project URL" |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Project Settings → API Keys**: la **Publishable key** (o la legacy **anon**) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Misma página: la **Secret key** (o la legacy **service_role**). **Es secreta** |
+| `DATABASE_URL` | **Connect** → **Transaction pooler** (puerto **6543**), con tu contraseña en `[YOUR-PASSWORD]` |

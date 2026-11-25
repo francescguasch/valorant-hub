@@ -10,11 +10,11 @@ One deployment serves one team: its own database, accounts, storage and URL.
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Design system, campus hero, auth (invitation codes, reset codes), roles, navigation, Overview dashboard, Settings (branding, members, visitor access, demo data) | **Done** |
-| 2 | Map Playbook, Match Center, Opponent Scouting, Team Analytics, CSV/XLSX export | Next |
-| 3 | Roster, Player Development, VOD Review, Practice Planner | Planned |
-| 4 | Security review, tests, responsive polish, deployment | Planned |
+| 2 | Map Playbook, Match Center, Opponent Scouting, Team Analytics, CSV/XLSX export | **Done** |
+| 3 | Roster, Player Development (feedback, goals with history, weekly evolution), VOD Review, Practice Planner | **Done** |
+| 4 | Content-Security-Policy, notifications, automatic migrations, end-to-end tests, responsive review, deployment | **Done** |
 
-The database schema for all phases is already in place, with Row Level Security.
+Ideas for later: an interactive whiteboard for strategies, and a second deployment for Hawaii UHE (see the end).
 
 ## Stack
 
@@ -43,17 +43,23 @@ cookies and image uploads.
 - **Visitor (read-only) mode:** the owner chooses which sections anyone with the link may view. Playbook, scouting
   and VOD review start private. Player Development and Settings can never be public. Visitors can't write anything.
 - **Password resets** use one-time codes created by the owner or a coach (no email service needed).
-- The first owner is created at `/setup` with the `SETUP_TOKEN` secret; the page locks once an owner exists.
+- The first owner uses the one-time code printed at the end of `supabase/setup.sql` (valid 2 days; run
+  `select app.create_owner_invitation();` in the SQL editor for a new one while there is no owner). Alternatively,
+  set `SETUP_TOKEN` and use `/setup`. Both lock once an owner exists.
+- **Content-Security-Policy** and other security headers (`next.config.ts`): scripts only from the site itself,
+  frames only from YouTube's privacy-enhanced domain, the site can't be framed.
 - The last active owner can't be demoted, blocked or deleted.
 
 ## Project layout
 
 ```
 src/app/(auth)/        login, join (invitation code), reset (reset code), setup (first owner)
-src/app/(hub)/         the app: overview and the ten sections
-src/app/(hub)/settings team & branding, members, visitor access, data, your account
+src/app/(hub)/         the app: overview, the ten sections and notifications
+src/app/(hub)/settings team & branding, members, visitor access, data, catalogue (maps, agents, roles), account
+src/app/export/        CSV / Excel exports (members only)
 src/components/        shell (sidebar, mobile menu), overview widgets, UI primitives
 src/lib/db.ts          Postgres access with RLS (withActor / asSystem)
+src/lib/migrate.ts     applies pending migrations on start-up (tracked in app.schema_migrations)
 src/lib/auth/          viewer resolution, role checks, invitation/reset codes
 src/lib/stats/         match statistics (pure functions + unit tests)
 supabase/migrations/   schema, security, catalogue seed, demo data
@@ -72,8 +78,12 @@ cp .env.example .env.local   # fill in the values
 npm run dev                  # http://localhost:3000
 ```
 
-Apply the database once: paste `supabase/setup.sql` into the Supabase SQL editor (new project), or run the files in
-`supabase/migrations` in order. After changing migrations run `npm run db:bundle` to regenerate `setup.sql`.
+Apply the database once: paste `supabase/setup.sql` into the Supabase SQL editor (new project). The app can also
+build an empty database by itself on first start.
+
+**Changing the database:** add a new file to `supabase/migrations` (never edit one that has shipped), make it safe to
+run twice (`if not exists`, `create or replace`), then run `npm run db:bundle`. That regenerates `setup.sql` and
+`src/lib/migrations.generated.ts`; after the next deploy the server applies the new file once, inside a transaction.
 
 ## Tests
 
@@ -82,6 +92,9 @@ npm run lint && npm run typecheck
 npm test                                     # unit tests
 TEST_DATABASE_URL=postgres://... npm test    # + database security tests
 ```
+
+The flows were also checked end to end in Chrome (Playwright) on a fresh database: sign-in, invitations, resets,
+visitor mode, matches, playbook, development, VOD, practice, exports and mobile layouts.
 
 The security tests need a throwaway Postgres with Supabase's roles: run `supabase/tests/supabase_stub.sql` and then
 the migrations on it (CI does this automatically). **Never point `TEST_DATABASE_URL` at the real project.**

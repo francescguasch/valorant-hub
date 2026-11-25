@@ -1,12 +1,16 @@
 import Link from "next/link";
-import { LogIn, LogOut } from "lucide-react";
+import { Bell, LogIn, LogOut } from "lucide-react";
 import type { SectionKey } from "@/lib/sections";
 import type { TeamSettings } from "@/lib/data/settings";
 import { NavLinks } from "./nav";
 import { TeamMark } from "./team-mark";
 import { buttonClass } from "../ui/button";
 
-export type ShellUser = { displayName: string; roleLabel: string } | null;
+export type ShellUser = {
+  displayName: string;
+  roleLabel: string;
+  notices: number;
+} | null;
 
 export function TeamBlock({ settings }: { settings: TeamSettings }) {
   return (
@@ -16,6 +20,25 @@ export function TeamBlock({ settings }: { settings: TeamSettings }) {
         <span className="block truncate text-[12.5px] text-fog">{settings.university_name}</span>
         <span className="type-display block truncate text-[17px] font-bold text-bone">{settings.team_name}</span>
       </span>
+    </Link>
+  );
+}
+
+export function NoticeBell({ count }: { count: number }) {
+  const label = count ? `${count} notification${count === 1 ? "" : "s"}` : "Notifications";
+  return (
+    <Link
+      href="/notifications"
+      className="relative grid size-9 shrink-0 place-items-center text-fog transition-colors hover:bg-white/[0.04] hover:text-bone"
+      title={label}
+    >
+      <Bell className="size-[18px]" aria-hidden />
+      <span className="sr-only">{label}</span>
+      {count ? (
+        <span className="num absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[11px] font-bold text-white">
+          {count > 9 ? "9+" : count}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -43,6 +66,7 @@ export function UserBlock({ user }: { user: ShellUser }) {
           <span className="block truncate text-[12.5px] text-fog">{user.roleLabel}</span>
         </span>
       </Link>
+      <NoticeBell count={user.notices} />
       <form action="/auth/signout" method="post">
         <button
           type="submit"
