@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { actorOf, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
-import { listBoards } from "@/lib/data/boards";
+import { boardsFor } from "@/lib/data/boards";
 import { BoardStrip } from "@/components/boards/board-strip";
 import { compAgents, loadCatalog } from "@/lib/data/catalog";
 import { listMatches } from "@/lib/data/matches";
@@ -26,7 +26,7 @@ export default async function OpponentPage({ params }: { params: Promise<{ id: s
     catalog: await loadCatalog(tx),
     matches: await listMatches(tx, { opponent: id }),
     notes: (await tx<{ notes: string | null }[]>`select notes from public.opponent_notes where opponent_id = ${id}`)[0]?.notes ?? null,
-    boards: await listBoards(tx, { kind: "opponent", id }),
+    boards: await boardsFor(tx, { kind: "opponent", id }),
   }));
   const opp = data.catalog.opponentById.get(id);
   if (!opp) notFound();
@@ -143,7 +143,8 @@ export default async function OpponentPage({ params }: { params: Promise<{ id: s
         </div>
         <BoardStrip
           className="mt-5"
-          boards={boards}
+          boards={boards.boards}
+          catalog={boards.catalog}
           canEdit={canEdit}
           newHref={`/boards/new?opponent=${id}`}
           description="Their setups, rotations and habits drawn on the map."

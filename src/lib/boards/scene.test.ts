@@ -72,6 +72,7 @@ describe("ability areas", () => {
       y: 100,
       team: "ally",
       s: 1,
+      r: 0,
       area: true,
       dir,
       reach,
@@ -109,5 +110,30 @@ describe("ability areas", () => {
       const d = Math.hypot(shape.handle[0] - 100, shape.handle[1] - 100);
       expect(d).toBeCloseTo(baseReach(spec, 6.7), 0);
     }
+  });
+});
+
+import { rotateGeometry } from "./scene";
+
+describe("rotation", () => {
+  it("turns arrows around their middle", () => {
+    const arrow = {
+      id: "a",
+      t: "arrow",
+      x1: 0,
+      y1: 0,
+      x2: 100,
+      y2: 0,
+      color: "#ffffff",
+      w: 4,
+      dash: false,
+      head: true,
+    } as const;
+    const turned = rotateGeometry(arrow, 90);
+    expect(turned).toMatchObject({ x1: 50, y1: -50, x2: 50, y2: 50 });
+  });
+  it("keeps old boards valid: rotation defaults to 0", () => {
+    const s = parseScene({ items: [{ id: "m", t: "marker", kind: "spike", x: 1, y: 1, color: "#ffffff" }] });
+    expect(s.items[0]).toMatchObject({ r: 0, s: 1 });
   });
 });

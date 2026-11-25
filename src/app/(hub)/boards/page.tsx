@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { actorOf, isStaff, requireMember } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
-import { listBoards, SECTION_LABEL, type BoardSection } from "@/lib/data/boards";
+import { boardsFor, SECTION_LABEL, type BoardSection } from "@/lib/data/boards";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
 import { BoardThumb } from "@/components/boards/board-strip";
 import { buttonClass } from "@/components/ui/button";
@@ -19,8 +19,8 @@ export default async function BoardsPage({
 }) {
   const me = await requireMember("/boards");
   const sp = await searchParams;
-  const { boards, maps } = await withActor(actorOf(me), async (tx) => ({
-    boards: await listBoards(tx, { kind: "all" }),
+  const { boards, catalog, maps } = await withActor(actorOf(me), async (tx) => ({
+    ...(await boardsFor(tx, { kind: "all" })),
     maps: await tx<
       { id: string; name: string }[]
     >`select id, name from public.maps where active order by in_rotation desc, sort_order, name`,
@@ -75,7 +75,7 @@ export default async function BoardsPage({
         {shown.length ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
             {shown.map((b) => (
-              <BoardThumb key={b.id} board={b} showSection />
+              <BoardThumb key={b.id} board={b} catalog={catalog} showSection />
             ))}
           </div>
         ) : (

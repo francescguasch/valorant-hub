@@ -28,11 +28,13 @@ const num = z.number().finite();
 const coord = num.min(-SIZE).max(SIZE * 2);
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const scale = num.min(0.4).max(3).default(1);
+/** Rotation in degrees, clockwise. */
+const angle = num.min(-720).max(720).default(0);
 const id = z.string().min(1).max(40);
 const team = z.enum(["ally", "enemy"]);
 const name = z.string().trim().min(1).max(40);
 
-const agentItem = z.object({ id, t: z.literal("agent"), agent: name, x: coord, y: coord, team, s: scale });
+const agentItem = z.object({ id, t: z.literal("agent"), agent: name, x: coord, y: coord, team, s: scale, r: angle });
 const abilityItem = z.object({
   id,
   t: z.literal("ability"),
@@ -42,6 +44,7 @@ const abilityItem = z.object({
   y: coord,
   team,
   s: scale,
+  r: angle,
   /** Draw the ability's area (smoke, wall, cone…) under the icon. */
   area: z.boolean().default(true),
   /** Direction of walls, cones and lines, in degrees (0 = right, clockwise). */
@@ -49,7 +52,16 @@ const abilityItem = z.object({
   /** Area size relative to the in-game size. */
   reach: num.min(0.2).max(4).default(1),
 });
-const markerItem = z.object({ id, t: z.literal("marker"), kind: z.enum(MARKERS), x: coord, y: coord, color, s: scale });
+const markerItem = z.object({
+  id,
+  t: z.literal("marker"),
+  kind: z.enum(MARKERS),
+  x: coord,
+  y: coord,
+  color,
+  s: scale,
+  r: angle,
+});
 const stepItem = z.object({
   id,
   t: z.literal("step"),
@@ -58,6 +70,7 @@ const stepItem = z.object({
   y: coord,
   color,
   s: scale,
+  r: angle,
 });
 const penItem = z.object({
   id,
@@ -91,6 +104,7 @@ const rectItem = z.object({
   w: num.min(2).max(SIZE * 2),
   h: num.min(2).max(SIZE * 2),
   color,
+  r: angle,
 });
 const textItem = z.object({
   id,
@@ -100,6 +114,7 @@ const textItem = z.object({
   text: z.string().max(200),
   color,
   s: scale,
+  r: angle,
 });
 
 export const itemSchema = z.discriminatedUnion("t", [
@@ -251,6 +266,31 @@ export function moveItem(item: Item, dx: number, dy: number): Item {
       return { ...item, x: item.x + dx, y: item.y + dy };
   }
 }
+
+/** Turns lines and freehand strokes around their centre (other items keep an angle instead). */
+export function rotateGeometry(item: Item, deg: number): Item {
+  if (item.t !== "pen" && item.t !== "arrow") return item;
+  const b = itemBox(item);
+  const cx = b.x + b.w / 2;
+  const cy = b.y + b.h / 2;
+  const a = (deg * Math.PI) / 180;
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  const turn = (x: number, y: number): [number, number] => [
+    Math.round((cx + (x - cx) * cos - (y - cy) * sin) * 10) / 10,
+    Math.round((cy + (x - cx) * sin + (y - cy) * cos) * 10) / 10,
+  ];
+  if (item.t === "arrow") {
+    const [x1, y1] = turn(item.x1, item.y1);
+    const [x2, y2] = turn(item.x2, item.y2);
+    return { ...item, x1, y1, x2, y2 };
+  }
+  const pts: number[] = [];
+  for (let i = 0; i < item.pts.length; i += 2) pts.push(...turn(item.pts[i]!, item.pts[i + 1]!));
+  return { ...item, pts };
+}
+
+export const normalizeAngle = (deg: number) => ((((deg + 180) % 360) + 360) % 360) - 180;
 
 /** Axis-aligned box around an item, in board units (unrotated map space). */
 export function itemBox(item: Item): { x: number; y: number; w: number; h: number } {

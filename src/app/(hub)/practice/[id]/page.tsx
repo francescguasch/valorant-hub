@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { actorOf, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
-import { listBoards } from "@/lib/data/boards";
+import { boardsFor } from "@/lib/data/boards";
 import { BoardStrip } from "@/components/boards/board-strip";
 import { loadCatalog } from "@/lib/data/catalog";
 import { formatDay, formatDuration } from "@/lib/format";
@@ -26,7 +26,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
   const { catalog, s, strategy, boards } = await withActor(actorOf(viewer), async (tx) => {
     const s = (await tx.unsafe<SessionRow[]>(`${sessionSelect(settings.timezone)} where id = $1`, [id]))[0];
     const strategy = s?.strategy_id ? (await tx<{ id: string; name: string }[]>`select id, name from public.strategies where id = ${s.strategy_id}`)[0] : undefined;
-    return { catalog: await loadCatalog(tx), s, strategy, boards: s ? await listBoards(tx, { kind: "session", id }) : [] };
+    return { catalog: await loadCatalog(tx), s, strategy, boards: s ? await boardsFor(tx, { kind: "session", id }) : { boards: [], catalog: null } };
   });
   if (!s) notFound();
   const blocks: [string, string | null][] = [
@@ -104,7 +104,8 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
         </div>
         <BoardStrip
           className="mt-5"
-          boards={boards}
+          boards={boards.boards}
+          catalog={boards.catalog}
           canEdit={canEdit}
           newHref={`/boards/new?session=${id}`}
           description="The plans to drill in this session."

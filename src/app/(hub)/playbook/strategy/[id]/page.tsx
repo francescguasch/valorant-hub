@@ -6,7 +6,7 @@ import { actorOf, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
 import { compAgents, loadCatalog } from "@/lib/data/catalog";
 import { getStrategy } from "@/lib/data/playbook";
-import { listBoards } from "@/lib/data/boards";
+import { boardsFor } from "@/lib/data/boards";
 import { BoardStrip } from "@/components/boards/board-strip";
 import { SIDE_LABEL, categoryLabel } from "@/lib/constants";
 import { formatDay } from "@/lib/format";
@@ -29,7 +29,7 @@ export default async function StrategyPage({ params, searchParams }: { params: P
   const { catalog, s, boards } = await withActor(actorOf(viewer), async (tx) => ({
     catalog: await loadCatalog(tx),
     s: await getStrategy(tx, id),
-    boards: await listBoards(tx, { kind: "strategy", id }),
+    boards: await boardsFor(tx, { kind: "strategy", id }),
   }));
   if (!s) notFound();
   const map = catalog.mapById.get(s.map_id);
@@ -83,7 +83,8 @@ export default async function StrategyPage({ params, searchParams }: { params: P
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-5">
             <BoardStrip
-              boards={boards}
+              boards={boards.boards}
+          catalog={boards.catalog}
               canEdit={canEdit}
               newHref={`/boards/new?strategy=${s.id}`}
               description="The plan drawn on the map: positions, utility and routes."

@@ -24,6 +24,7 @@ import {
   MoveUpRight,
   Pencil,
   Redo2,
+  RotateCcw,
   RotateCw,
   Slash,
   Square,
@@ -41,8 +42,11 @@ import {
   MARKERS,
   MAX_ITEMS,
   MAX_PEN_POINTS,
+  itemBox,
   moveItem,
   newId,
+  normalizeAngle,
+  rotateGeometry,
   simplify,
   TEAM_COLOR,
   type BoardCatalog,
@@ -64,6 +68,7 @@ type Placement =
 type Drag =
   | { mode: "move"; id: string; sx: number; sy: number; orig: Item; before: Scene; moved: boolean }
   | { mode: "aim"; id: string; before: Scene; moved: boolean; history: boolean }
+  | { mode: "rotate"; id: string; cx: number; cy: number; a0: number; orig: Item; before: Scene; moved: boolean }
   | { mode: "draw"; id: string; ax: number; ay: number; before: Scene };
 
 export type BoardParentRef = { kind: "strategy" | "opponent" | "vod" | "session" | "match"; id: string };
@@ -145,7 +150,7 @@ export function BoardEditor({
   const [team, setTeam] = useState<Team>("ally");
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<"agents" | "markers" | "board" | "details">("agents");
-  const [activeAgent, setActiveAgent] = useState<string | null>(null);
+  const [agentQuery, setAgentQuery] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,11 +175,47 @@ export function BoardEditor({
       ),
     [catalog.agents],
   );
-  const shownAgent = catalog.agents.find((a) => a.name === activeAgent) ?? null;
+  // Agents already on the board come first, so their utility is one click away.
+  const agentGroups = useMemo(() => {
+    const q = agentQuery.trim().toLowerCase();
+    const match = (a: BoardCatalog["agents"][number]) => !q || a.name.toLowerCase().includes(q);
+    const onBoard: string[] = [];
+    for (const i of scene.items) {
+      if ((i.t === "agent" || i.t === "ability") && !onBoard.includes(i.agent.toLowerCase()))
+        onBoard.push(i.agent.toLowerCase());
+    }
+    const placed = onBoard
+      .map((n) => catalog.agents.find((a) => a.name.toLowerCase() === n))
+      .filter((a): a is BoardCatalog["agents"][number] => Boolean(a && match(a)));
+    const groups = [{ label: "On the board", agents: placed }];
+    for (const g of agentsByRole) {
+      groups.push({
+        label: ROLE_LABEL[g.role] ?? g.role,
+        agents: g.agents.filter((a) => match(a) && !onBoard.includes(a.name.toLowerCase())),
+      });
+    }
+    return groups.filter((g) => g.agents.length);
+  }, [agentQuery, scene.items, catalog.agents, agentsByRole]);
   const agentByName = useMemo(() => new Map(catalog.agents.map((a) => [a.name.toLowerCase(), a])), [catalog.agents]);
   const scale = catalog.maps.find((m) => m.id === mapId)?.scale ?? DEFAULT_SCALE;
   const specOf = (it: Item | null): AreaSpec | null =>
     it?.t === "ability" ? areaFor(agentByName.get(it.agent.toLowerCase()), it.slot) : null;
+  /** Abilities with a wall, cone or line turn their area; everything else turns itself. */
+  const aimsArea = (it: Item) => {
+    const spec = it.t === "ability" && it.area ? specOf(it) : null;
+    return Boolean(spec && isDirectional(spec));
+  };
+  const rotateBy = (it: Item, deg: number): Item => {
+    if (it.t === "pen" || it.t === "arrow") return rotateGeometry(it, deg);
+    if (it.t === "circle") return it;
+    if (it.t === "ability" && aimsArea(it)) return { ...it, dir: Math.round(normalizeAngle(it.dir + deg)) };
+    return { ...it, r: Math.round(normalizeAngle(it.r + deg)) };
+  };
+  const rotateSelected = (deg: number) => {
+    const s = sceneRef.current;
+    const it = s.items.find((i) => i.id === selected);
+    if (it) commit({ ...s, items: s.items.map((i) => (i.id === it.id ? rotateBy(it, deg) : i)) });
+  };
 
   // --- history --------------------------------------------------------------
   const commit = useCallback((next: Scene, before?: Scene) => {
@@ -253,7 +294,7 @@ export function BoardEditor({
   const place = (pl: Placement, p: { x: number; y: number }, keep: boolean): Item | null => {
     if (full()) return null;
     const s = sceneRef.current;
-    const base = { id: newId(), x: p.x, y: p.y, s: 1 };
+    const base = { id: newId(), x: p.x, y: p.y, s: 1, r: 0 };
     let item: Item;
     if (pl.t === "agent") item = { ...base, t: "agent", agent: pl.agent, team };
     else if (pl.t === "ability") {
@@ -295,7 +336,7 @@ export function BoardEditor({
     if (tool === "text") {
       if (full()) return;
       const s = sceneRef.current;
-      const item: Item = { id: newId(), t: "text", x: p.x, y: p.y, text: "Text", color, s: 1 };
+      const item: Item = { id: newId(), t: "text", x: p.x, y: p.y, text: "Text", color, s: 1, r: 0 };
       commit({ ...s, items: [...s.items, item] });
       setSelected(item.id);
       setTool("select");
@@ -309,7 +350,7 @@ export function BoardEditor({
     else if (tool === "arrow" || tool === "line")
       item = { id, t: "arrow", x1: p.x, y1: p.y, x2: p.x, y2: p.y, color, w: width, dash, head: tool === "arrow" };
     else if (tool === "circle") item = { id, t: "circle", x: p.x, y: p.y, r: 2, color };
-    else item = { id, t: "rect", x: p.x, y: p.y, w: 2, h: 2, color };
+    else item = { id, t: "rect", x: p.x, y: p.y, w: 2, h: 2, color, r: 0 };
     const before = sceneRef.current;
     dragRef.current = { mode: "draw", id, ax: p.x, ay: p.y, before };
     setScene({ ...before, items: [...before.items, item] });
@@ -340,6 +381,17 @@ export function BoardEditor({
     svgRef.current?.setPointerCapture(e.pointerId);
   };
 
+  const onRotatePointerDown = (e: ReactPointerEvent<SVGGElement>, item: Item) => {
+    e.stopPropagation();
+    const b = itemBox(item);
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const p = toBoard(e);
+    const a0 = (Math.atan2(p.y - cy, p.x - cx) * 180) / Math.PI;
+    dragRef.current = { mode: "rotate", id: item.id, cx, cy, a0, orig: item, before: sceneRef.current, moved: false };
+    svgRef.current?.setPointerCapture(e.pointerId);
+  };
+
   const onHandlePointerDown = (e: ReactPointerEvent<SVGCircleElement>, item: Item) => {
     e.stopPropagation();
     dragRef.current = { mode: "aim", id: item.id, before: sceneRef.current, moved: false, history: true };
@@ -350,6 +402,15 @@ export function BoardEditor({
     const d = dragRef.current;
     if (!d) return;
     const p = toBoard(e);
+    if (d.mode === "rotate") {
+      let delta = (Math.atan2(p.y - d.cy, p.x - d.cx) * 180) / Math.PI - d.a0;
+      if (e.shiftKey) delta = Math.round(delta / 15) * 15;
+      if (!d.moved && Math.abs(delta) < 1) return;
+      d.moved = true;
+      const turned = rotateBy(d.orig, delta);
+      setScene((s) => ({ ...s, items: s.items.map((i) => (i.id === d.id ? turned : i)) }));
+      return;
+    }
     if (d.mode === "aim") {
       setScene((s) => ({
         ...s,
@@ -416,6 +477,14 @@ export function BoardEditor({
     dragRef.current = null;
     if (!d) return;
     const s = sceneRef.current;
+    if (d.mode === "rotate") {
+      if (d.moved) {
+        setPast((p) => [...p.slice(-79), d.before]);
+        setFuture([]);
+        setDirty(true);
+      }
+      return;
+    }
     if (d.mode === "aim") {
       if (d.moved && d.history) {
         setPast((p) => [...p.slice(-79), d.before]);
@@ -468,6 +537,11 @@ export function BoardEditor({
         duplicateItem(selected);
         return;
       }
+      if ((e.key === "[" || e.key === "]") && selected) {
+        e.preventDefault();
+        rotateSelected(e.key === "]" ? 15 : -15);
+        return;
+      }
       if ((e.key === "Delete" || e.key === "Backspace") && selected) {
         e.preventDefault();
         removeItem(selected);
@@ -488,6 +562,7 @@ export function BoardEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rotateSelected reads the latest scene from a ref
   }, [selected, undo, redo, removeItem, duplicateItem]);
 
   const uploadBackground = useCallback(
@@ -759,6 +834,7 @@ export function BoardEditor({
               interactive
               onItemPointerDown={onItemPointerDown}
               onHandlePointerDown={onHandlePointerDown}
+              onRotatePointerDown={onRotatePointerDown}
               boardHandlers={{
                 onPointerDown: onBoardPointerDown,
                 onPointerMove: onPointerMove,
@@ -788,7 +864,7 @@ export function BoardEditor({
         </div>
 
         {/* Side panel */}
-        <aside className="flex min-w-0 flex-col gap-4">
+        <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto">
           {selectedItem ? (
             <SelectionPanel
               item={selectedItem}
@@ -799,6 +875,8 @@ export function BoardEditor({
               onFront={() => toFront(selectedItem.id)}
               onTeam={pickTeam}
               spec={specOf(selectedItem)}
+              aimsArea={aimsArea(selectedItem)}
+              onRotate={rotateSelected}
             />
           ) : null}
 
@@ -830,92 +908,32 @@ export function BoardEditor({
 
             <div className="p-4">
               {tab === "agents" ? (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                   <TeamToggle team={team} onChange={pickTeam} />
-                  {agentsByRole.map((g) => (
-                    <div key={g.role}>
-                      <p className="mb-1.5 text-[12.5px] text-fog">{ROLE_LABEL[g.role]}</p>
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {g.agents.map((a) => {
-                          const pl: Placement = { t: "agent", agent: a.name };
-                          const armed = placement?.t === "agent" && placement.agent === a.name;
-                          return (
-                            <button
-                              key={a.name}
-                              type="button"
-                              title={a.name}
-                              aria-label={`Place ${a.name}`}
-                              draggable
-                              onDragStart={(e) => e.dataTransfer.setData("text/x-board", JSON.stringify(pl))}
-                              onClick={() => {
-                                setActiveAgent(a.name);
-                                arm(pl);
-                              }}
-                              className={clsx(
-                                "grid aspect-square place-items-center overflow-hidden rounded-full border-2 bg-rail transition-colors",
-                                armed
-                                  ? "border-bone"
-                                  : activeAgent === a.name
-                                    ? "border-line-strong"
-                                    : "border-transparent hover:border-line-strong",
-                              )}
-                              style={{ boxShadow: `inset 0 0 0 2px ${TEAM_COLOR[team]}55` }}
-                            >
-                              {a.icon ? (
-                                <img src={a.icon} alt="" className="size-full object-cover" draggable={false} />
-                              ) : (
-                                <span className="font-display text-[13px] font-bold text-bone">
-                                  {a.name.slice(0, 2)}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                  <input
+                    type="search"
+                    value={agentQuery}
+                    onChange={(e) => setAgentQuery(e.target.value)}
+                    placeholder="Find an agent"
+                    aria-label="Find an agent"
+                    className="h-10 border border-line bg-rail px-3 text-[14px] text-bone outline-none focus:border-accent"
+                  />
+                  <p className="text-[12.5px] text-dim">
+                    Click the agent or one of their abilities (C, Q, E, X), then click the map. You can also drag them.
+                  </p>
+                  {agentGroups.map((g) => (
+                    <div key={g.label}>
+                      <p className="mb-1.5 text-[12.5px] text-fog">{g.label}</p>
+                      <ul className="flex flex-col gap-1">
+                        {g.agents.map((a) => (
+                          <AgentRow key={a.name} agent={a} team={team} placement={placement} onArm={arm} />
+                        ))}
+                      </ul>
                     </div>
                   ))}
-                  <div className="border-t border-line pt-3">
-                    <p className="mb-1.5 text-[12.5px] text-fog">
-                      {shownAgent ? `${shownAgent.name}'s utility` : "Pick an agent to see their utility"}
-                    </p>
-                    {shownAgent ? (
-                      shownAgent.abilities.length ? (
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {shownAgent.abilities.map((ab) => {
-                            const pl: Placement = { t: "ability", agent: shownAgent.name, slot: ab.slot };
-                            const armed =
-                              placement?.t === "ability" &&
-                              placement.agent === shownAgent.name &&
-                              placement.slot === ab.slot;
-                            return (
-                              <button
-                                key={ab.slot}
-                                type="button"
-                                title={`${ab.name} (${slotKey(ab.slot)})`}
-                                aria-label={`Place ${ab.name}`}
-                                draggable
-                                onDragStart={(e) => e.dataTransfer.setData("text/x-board", JSON.stringify(pl))}
-                                onClick={() => arm(pl)}
-                                className={clsx(
-                                  "flex flex-col items-center gap-1 border bg-rail px-1 py-2 transition-colors",
-                                  armed ? "border-bone" : "border-line hover:border-line-strong",
-                                )}
-                              >
-                                {ab.icon ? (
-                                  <img src={ab.icon} alt="" className="size-7 object-contain" draggable={false} />
-                                ) : (
-                                  <span className="grid size-7 place-items-center text-bone">{slotKey(ab.slot)}</span>
-                                )}
-                                <span className="text-[11.5px] text-fog">{slotKey(ab.slot)}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-[13px] text-dim">No utility icons available for this agent.</p>
-                      )
-                    ) : null}
-                  </div>
+                  {agentGroups.length === 0 ? (
+                    <p className="text-[13.5px] text-fog">No agent matches that name.</p>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -1169,6 +1187,75 @@ function ToolButton({
   );
 }
 
+function AgentRow({
+  agent,
+  team,
+  placement,
+  onArm,
+}: {
+  agent: BoardCatalog["agents"][number];
+  team: Team;
+  placement: Placement | null;
+  onArm: (pl: Placement) => void;
+}) {
+  const pl: Placement = { t: "agent", agent: agent.name };
+  const armed = placement?.t === "agent" && placement.agent === agent.name;
+  return (
+    <li className="flex items-center gap-2">
+      <button
+        type="button"
+        title={agent.name}
+        aria-label={`Place ${agent.name}`}
+        draggable
+        onDragStart={(e) => e.dataTransfer.setData("text/x-board", JSON.stringify(pl))}
+        onClick={() => onArm(pl)}
+        className={clsx(
+          "grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-rail transition-colors",
+          armed ? "border-bone" : "border-transparent hover:border-line-strong",
+        )}
+        style={{ boxShadow: `inset 0 0 0 2px ${TEAM_COLOR[team]}66` }}
+      >
+        {agent.icon ? (
+          <img src={agent.icon} alt="" className="size-full object-cover" draggable={false} />
+        ) : (
+          <span className="font-display text-[13px] font-bold text-bone">{agent.name.slice(0, 2)}</span>
+        )}
+      </button>
+      <span className="min-w-0 flex-1 truncate text-[13.5px] text-bone">{agent.name}</span>
+      <div className="flex shrink-0 gap-1">
+        {agent.abilities.map((ab) => {
+          const apl: Placement = { t: "ability", agent: agent.name, slot: ab.slot };
+          const on = placement?.t === "ability" && placement.agent === agent.name && placement.slot === ab.slot;
+          return (
+            <button
+              key={ab.slot}
+              type="button"
+              title={`${ab.name} (${slotKey(ab.slot)})`}
+              aria-label={`Place ${ab.name}`}
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData("text/x-board", JSON.stringify(apl))}
+              onClick={() => onArm(apl)}
+              className={clsx(
+                "relative grid size-9 place-items-center border bg-rail transition-colors",
+                on ? "border-bone" : "border-line hover:border-line-strong",
+              )}
+            >
+              {ab.icon ? (
+                <img src={ab.icon} alt="" className="size-6 object-contain" draggable={false} />
+              ) : (
+                <span className="text-[12px] text-bone">{slotKey(ab.slot)}</span>
+              )}
+              <span className="absolute bottom-0 right-0.5 text-[9.5px] font-semibold leading-none text-fog">
+                {slotKey(ab.slot)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </li>
+  );
+}
+
 function TeamToggle({ team, onChange }: { team: Team; onChange: (t: Team) => void }) {
   return (
     <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Team">
@@ -1201,9 +1288,13 @@ function SelectionPanel({
   onFront,
   onTeam,
   spec,
+  aimsArea,
+  onRotate,
 }: {
   item: Item;
   spec: AreaSpec | null;
+  aimsArea: boolean;
+  onRotate: (deg: number) => void;
   textInputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (patch: Partial<Item>) => void;
   onDelete: () => void;
@@ -1316,6 +1407,24 @@ function SelectionPanel({
           />
         </label>
       ) : null}
+      {item.t !== "circle" ? (
+        <div className="flex items-center gap-2 text-[14px] text-fog">
+          <span className="mr-auto">{aimsArea ? "Turn the area" : "Rotate"}</span>
+          {"r" in item && !aimsArea ? <span className="num text-bone">{Math.round(item.r)}°</span> : null}
+          {item.t === "ability" && aimsArea ? (
+            <span className="num text-bone">{Math.round(normalizeAngle(item.dir))}°</span>
+          ) : null}
+          <ToolButton label="Rotate left 15° ([)" onClick={() => onRotate(-15)}>
+            <RotateCcw className="size-4" />
+          </ToolButton>
+          <ToolButton label="Rotate right 15° (])" onClick={() => onRotate(15)}>
+            <RotateCw className="size-4" />
+          </ToolButton>
+          <ToolButton label="Rotate 90°" onClick={() => onRotate(90)}>
+            <span className="text-[12px] font-semibold">90°</span>
+          </ToolButton>
+        </div>
+      ) : null}
       {item.t === "arrow" ? (
         <label className="flex items-center gap-2 text-[14px] text-bone">
           <input
@@ -1328,7 +1437,8 @@ function SelectionPanel({
         </label>
       ) : null}
       <p className="text-[12.5px] text-dim">
-        Colour, line width and dashes from the toolbar change the selection. Drag it to move it.
+        Colour, line width and dashes from the toolbar change the selection. Drag it to move it; drag the round handle
+        above it to turn it.
       </p>
     </div>
   );

@@ -35,6 +35,8 @@ export type SceneSvgProps = {
   onItemPointerDown?: (e: ReactPointerEvent<SVGGElement>, item: Item) => void;
   /** Drag handle that aims and sizes the selected ability's area (editor only). */
   onHandlePointerDown?: (e: ReactPointerEvent<SVGCircleElement>, item: Item) => void;
+  /** Drag handle that turns the selected item (editor only). */
+  onRotatePointerDown?: (e: ReactPointerEvent<SVGGElement>, item: Item) => void;
   /** Pointer and drop handlers for the whole board (editor only). */
   boardHandlers?: Pick<
     DOMAttributes<SVGSVGElement>,
@@ -55,6 +57,7 @@ export function SceneSvg({
   layerRef,
   onItemPointerDown,
   onHandlePointerDown,
+  onRotatePointerDown,
   boardHandlers,
   interactive,
 }: SceneSvgProps) {
@@ -154,6 +157,9 @@ export function SceneSvg({
             {selectedId === item.id && onHandlePointerDown ? (
               <AreaHandle item={item} icon={agentIcon} scale={scale} onPointerDown={onHandlePointerDown} />
             ) : null}
+            {selectedId === item.id && onRotatePointerDown ? (
+              <RotateHandle item={item} rot={rot} icon={agentIcon} onPointerDown={onRotatePointerDown} />
+            ) : null}
           </g>
         ))}
       </g>
@@ -165,8 +171,9 @@ export function SceneSvg({
 export const calloutX = (x: number) => 20 + (x * (SIZE - 40)) / SIZE;
 export const calloutY = (y: number) => 20 + (y * (SIZE - 40)) / SIZE;
 
-const upright = (x: number, y: number, rot: number, s = 1) =>
-  `translate(${x} ${y})${rot ? ` rotate(${-rot})` : ""}${s !== 1 ? ` scale(${s})` : ""}`;
+/** Icons stay upright when the board turns, then take their own angle (r). */
+const upright = (x: number, y: number, rot: number, s = 1, r = 0) =>
+  `translate(${x} ${y})${r - rot ? ` rotate(${r - rot})` : ""}${s !== 1 ? ` scale(${s})` : ""}`;
 
 /** Dark text on light fills, light text on dark ones. */
 export function inkOn(hex: string) {
@@ -212,6 +219,7 @@ function ItemShape({
           fillOpacity="0.2"
           stroke={item.color}
           strokeWidth="3"
+          transform={item.r ? `rotate(${item.r} ${item.x + item.w / 2} ${item.y + item.h / 2})` : undefined}
         />
       );
     case "pen": {
@@ -255,7 +263,7 @@ function ItemShape({
       const a = icon.get(item.agent.toLowerCase());
       const r = ICON.agent / 2;
       return (
-        <g transform={upright(item.x, item.y, rot, item.s)}>
+        <g transform={upright(item.x, item.y, rot, item.s, item.r)}>
           <circle r={r} fill={INK} stroke={TEAM_COLOR[item.team]} strokeWidth="4" />
           {a?.icon ? (
             <image
@@ -314,7 +322,7 @@ function ItemShape({
       return (
         <>
           {area}
-          <g transform={upright(item.x, item.y, rot, item.s)}>
+          <g transform={upright(item.x, item.y, rot, item.s, item.r)}>
             <rect x={-h} y={-h} width={h * 2} height={h * 2} rx="9" fill={INK} stroke={color} strokeWidth="3.5" />
             {ab?.icon ? (
               <image href={ab.icon} x={-h + 7} y={-h + 7} width={(h - 7) * 2} height={(h - 7) * 2} />
@@ -338,7 +346,7 @@ function ItemShape({
     case "marker": {
       const r = ICON.marker / 2;
       return (
-        <g transform={upright(item.x, item.y, rot, item.s)}>
+        <g transform={upright(item.x, item.y, rot, item.s, item.r)}>
           <circle r={r} fill={INK} fillOpacity="0.85" stroke={item.color} strokeWidth="3" />
           <path
             d={MARKER_PATHS[item.kind]}
@@ -354,7 +362,7 @@ function ItemShape({
     }
     case "step":
       return (
-        <g transform={upright(item.x, item.y, rot, item.s)}>
+        <g transform={upright(item.x, item.y, rot, item.s, item.r)}>
           <circle r={ICON.step / 2} fill={item.color} stroke={INK} strokeWidth="2.5" />
           <text
             textAnchor="middle"
@@ -370,7 +378,7 @@ function ItemShape({
       );
     case "text":
       return (
-        <g transform={upright(item.x, item.y, rot, item.s)}>
+        <g transform={upright(item.x, item.y, rot, item.s, item.r)}>
           <text
             textAnchor="middle"
             dominantBaseline="central"
@@ -433,6 +441,60 @@ function AreaHandle({
   );
 }
 
+/** A round handle above the selection: drag it around to turn the item. */
+function RotateHandle({
+  item,
+  rot,
+  icon,
+  onPointerDown,
+}: {
+  item: Item;
+  rot: number;
+  icon: Map<string, BoardCatalog["agents"][number]>;
+  onPointerDown: (e: ReactPointerEvent<SVGGElement>, item: Item) => void;
+}) {
+  if (item.t === "circle") return null;
+  // Abilities with a wall, cone or line are aimed with their own handle instead.
+  if (item.t === "ability" && item.area) {
+    const spec = areaFor(icon.get(item.agent.toLowerCase()), item.slot);
+    if (spec && spec.kind !== "circle") return null;
+  }
+  const b = itemBox(item);
+  const cx = b.x + b.w / 2;
+  const cy = b.y + b.h / 2;
+  const t = (rot * Math.PI) / 180;
+  // "Up" on screen, whatever way the board is turned.
+  const ux = -Math.sin(t);
+  const uy = -Math.cos(t);
+  const d = Math.max(b.w, b.h) / 2 + 34;
+  const hx = cx + ux * d;
+  const hy = cy + uy * d;
+  return (
+    <g data-rotate={item.id} style={{ cursor: "grab" }} onPointerDown={(e) => onPointerDown(e, item)}>
+      <line
+        x1={cx + ux * (d - 22)}
+        y1={cy + uy * (d - 22)}
+        x2={hx}
+        y2={hy}
+        stroke="#ffffff"
+        strokeOpacity="0.6"
+        strokeWidth="1.5"
+        pointerEvents="none"
+      />
+      <circle cx={hx} cy={hy} r="13" fill="#ffffff" stroke={INK} strokeWidth="3" />
+      <path
+        d="M-5 -1.5 A5.5 5.5 0 1 1 -1.5 4.8 M-5 -1.5 L-6.2 -6 M-5 -1.5 L-0.6 -2.6"
+        transform={`translate(${hx} ${hy}) rotate(${-rot})`}
+        fill="none"
+        stroke={INK}
+        strokeWidth="2"
+        strokeLinecap="round"
+        pointerEvents="none"
+      />
+    </g>
+  );
+}
+
 export const slotKey = (slot: string) => ({ Grenade: "C", Ability1: "Q", Ability2: "E", Ultimate: "X" })[slot] ?? "";
 
 function Selection({ item, rot }: { item: Item; rot: number }) {
@@ -453,8 +515,10 @@ function Selection({ item, rot }: { item: Item; rot: number }) {
       pointerEvents="none"
     />
   );
-  if (!isUpright) return rect;
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
-  return <g transform={upright(cx, cy, rot)}>{rect}</g>;
+  if (!isUpright) {
+    return item.t === "rect" && item.r ? <g transform={`rotate(${item.r} ${cx} ${cy})`}>{rect}</g> : rect;
+  }
+  return <g transform={upright(cx, cy, rot, 1, "r" in item ? item.r : 0)}>{rect}</g>;
 }

@@ -30,6 +30,8 @@ export const SECTION_LABEL: Record<BoardSection, string> = {
 export type BoardCard = {
   id: string;
   title: string;
+  map_id: string | null;
+  scene: Scene;
   image_url: string | null;
   map_name: string | null;
   side: "attack" | "defense" | null;
@@ -39,7 +41,6 @@ export type BoardCard = {
 
 export type BoardRow = BoardCard & {
   notes: string | null;
-  map_id: string | null;
   valoplant_url: string | null;
   scene: Scene;
   strategy_id: string | null;
@@ -85,7 +86,7 @@ export async function boardCatalog(tx: Tx): Promise<BoardCatalog> {
 }
 
 const CARD_COLUMNS = (tx: Tx) => tx`
-  b.id, b.title, b.image_url, mp.name as map_name, b.side, b.section, b.updated_at::text as updated_at`;
+  b.id, b.title, b.map_id, b.scene, b.image_url, mp.name as map_name, b.side, b.section, b.updated_at::text as updated_at`;
 
 /** Boards attached to one record, or the boards of a map that belong to no record. */
 export async function listBoards(tx: Tx, where: BoardParent | { kind: "map"; id: string } | { kind: "all" }) {
@@ -95,16 +96,23 @@ export async function listBoards(tx: Tx, where: BoardParent | { kind: "map"; id:
       : where.kind === "map"
         ? tx`where b.map_id = ${where.id} and num_nonnulls(b.strategy_id, b.opponent_id, b.vod_id, b.session_id, b.match_id) = 0`
         : tx`where ${tx(PARENT_COLUMN[where.kind])} = ${where.id}`;
-  return tx<BoardCard[]>`
+  const rows = await tx<(Omit<BoardCard, "scene"> & { scene: unknown })[]>`
     select ${CARD_COLUMNS(tx)}
     from public.boards b left join public.maps mp on mp.id = b.map_id
     ${filter}
     order by b.updated_at desc`;
+  return rows.map((r) => ({ ...r, scene: parseScene(r.scene) }));
+}
+
+/** Boards plus what's needed to draw them (only fetched when there are boards). */
+export async function boardsFor(tx: Tx, where: Parameters<typeof listBoards>[1]) {
+  const boards = await listBoards(tx, where);
+  return { boards, catalog: boards.length ? await boardCatalog(tx) : null };
 }
 
 export async function getBoard(tx: Tx, id: string): Promise<BoardRow | null> {
   const [row] = await tx<(Omit<BoardRow, "scene" | "parent"> & { scene: unknown; parent_label: string | null })[]>`
-    select ${CARD_COLUMNS(tx)}, b.notes, b.map_id, b.valoplant_url, b.scene,
+    select ${CARD_COLUMNS(tx)}, b.notes, b.valoplant_url,
            b.strategy_id, b.opponent_id, b.vod_id, b.session_id, b.match_id,
            pr.display_name as created_by_name,
            coalesce(s.name, o.name, v.category, ps.session_type, mo.name) as parent_label

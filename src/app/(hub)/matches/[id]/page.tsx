@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { actorOf, isStaff, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
-import { listBoards } from "@/lib/data/boards";
+import { boardsFor } from "@/lib/data/boards";
 import { BoardStrip } from "@/components/boards/board-strip";
 import { compAgents, loadCatalog } from "@/lib/data/catalog";
 import { getMatch } from "@/lib/data/matches";
@@ -37,7 +37,7 @@ export default async function MatchPage({
   const data = await withActor(actorOf(viewer), async (tx) => ({
     catalog: await loadCatalog(tx),
     detail: await getMatch(tx, id),
-    boards: await listBoards(tx, { kind: "match", id }),
+    boards: await boardsFor(tx, { kind: "match", id }),
   }));
   if (!data.detail) notFound();
   const { catalog, detail, boards } = data;
@@ -241,7 +241,8 @@ export default async function MatchPage({
         </div>
         <BoardStrip
           className="mt-5"
-          boards={boards}
+          boards={boards.boards}
+          catalog={boards.catalog}
           canEdit={canEdit}
           newHref={`/boards/new?match=${id}`}
           description="Rounds and situations from this match, drawn on the map. Only team members see them."

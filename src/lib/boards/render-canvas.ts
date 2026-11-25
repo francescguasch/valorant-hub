@@ -29,7 +29,12 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
       img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
-      img.src = url;
+      // The page already shows these pictures without CORS; browsers may reuse that cached copy
+      // (no CORS headers) and refuse it here. A distinct URL forces a proper CORS request.
+      img.src =
+        url.startsWith("data:") || url.startsWith("blob:")
+          ? url
+          : `${url}${url.includes("?") ? "&" : "?"}board-export=1`;
     });
     cache.set(url, p);
   }
@@ -87,10 +92,10 @@ export async function renderBoard(
     if (img) ctx.drawImage(img, x, y, w, h);
     return Boolean(img);
   };
-  const upright = (x: number, y: number, s: number, fn: () => void) => {
+  const upright = (x: number, y: number, s: number, fn: () => void, r = 0) => {
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(-rot);
+    ctx.rotate(-rot + (r * Math.PI) / 180);
     ctx.scale(s, s);
     fn();
     ctx.restore();
@@ -145,9 +150,13 @@ export async function renderBoard(
         zone(ctx, it.color);
         break;
       case "rect":
+        ctx.save();
+        ctx.translate(it.x + it.w / 2, it.y + it.h / 2);
+        ctx.rotate((it.r * Math.PI) / 180);
         ctx.beginPath();
-        ctx.rect(it.x, it.y, it.w, it.h);
+        ctx.rect(-it.w / 2, -it.h / 2, it.w, it.h);
         zone(ctx, it.color);
+        ctx.restore();
         break;
       case "pen":
         ctx.save();
@@ -183,22 +192,28 @@ export async function renderBoard(
       case "agent": {
         const a = agents.get(it.agent.toLowerCase());
         const r = ICON.agent / 2;
-        upright(it.x, it.y, it.s, () => {
-          ctx.beginPath();
-          ctx.arc(0, 0, r, 0, Math.PI * 2);
-          ctx.fillStyle = INK;
-          ctx.fill();
-          ctx.lineWidth = 4;
-          ctx.strokeStyle = TEAM_COLOR[it.team];
-          ctx.stroke();
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(0, 0, r - 4, 0, Math.PI * 2);
-          ctx.clip();
-          if (!draw(a?.icon, -r + 4, -r + 4, (r - 4) * 2, (r - 4) * 2))
-            label(it.agent.slice(0, 2).toUpperCase(), 22, 700, "#fff");
-          ctx.restore();
-        });
+        upright(
+          it.x,
+          it.y,
+          it.s,
+          () => {
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fillStyle = INK;
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = TEAM_COLOR[it.team];
+            ctx.stroke();
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(0, 0, r - 4, 0, Math.PI * 2);
+            ctx.clip();
+            if (!draw(a?.icon, -r + 4, -r + 4, (r - 4) * 2, (r - 4) * 2))
+              label(it.agent.slice(0, 2).toUpperCase(), 22, 700, "#fff");
+            ctx.restore();
+          },
+          it.r,
+        );
         break;
       }
       case "ability": {
@@ -236,50 +251,68 @@ export async function renderBoard(
           }
           ctx.restore();
         }
-        upright(it.x, it.y, it.s, () => {
-          ctx.beginPath();
-          ctx.roundRect(-h, -h, h * 2, h * 2, 9);
-          ctx.fillStyle = INK;
-          ctx.fill();
-          ctx.lineWidth = 3.5;
-          ctx.strokeStyle = TEAM_COLOR[it.team];
-          ctx.stroke();
-          if (!draw(ab?.icon, -h + 7, -h + 7, (h - 7) * 2, (h - 7) * 2)) label(it.agent.slice(0, 1), 16, 700, "#fff");
-        });
+        upright(
+          it.x,
+          it.y,
+          it.s,
+          () => {
+            ctx.beginPath();
+            ctx.roundRect(-h, -h, h * 2, h * 2, 9);
+            ctx.fillStyle = INK;
+            ctx.fill();
+            ctx.lineWidth = 3.5;
+            ctx.strokeStyle = TEAM_COLOR[it.team];
+            ctx.stroke();
+            if (!draw(ab?.icon, -h + 7, -h + 7, (h - 7) * 2, (h - 7) * 2)) label(it.agent.slice(0, 1), 16, 700, "#fff");
+          },
+          it.r,
+        );
         break;
       }
       case "marker":
-        upright(it.x, it.y, it.s, () => {
-          ctx.beginPath();
-          ctx.arc(0, 0, ICON.marker / 2, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(11,15,20,0.85)";
-          ctx.fill();
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = it.color;
-          ctx.stroke();
-          ctx.translate(-13, -13);
-          ctx.scale(1.0833, 1.0833);
-          ctx.lineWidth = 2.4;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.stroke(new Path2D(MARKER_PATHS[it.kind]));
-        });
+        upright(
+          it.x,
+          it.y,
+          it.s,
+          () => {
+            ctx.beginPath();
+            ctx.arc(0, 0, ICON.marker / 2, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(11,15,20,0.85)";
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = it.color;
+            ctx.stroke();
+            ctx.translate(-13, -13);
+            ctx.scale(1.0833, 1.0833);
+            ctx.lineWidth = 2.4;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke(new Path2D(MARKER_PATHS[it.kind]));
+          },
+          it.r,
+        );
         break;
       case "step":
-        upright(it.x, it.y, it.s, () => {
-          ctx.beginPath();
-          ctx.arc(0, 0, ICON.step / 2, 0, Math.PI * 2);
-          ctx.fillStyle = it.color;
-          ctx.fill();
-          ctx.lineWidth = 2.5;
-          ctx.strokeStyle = INK;
-          ctx.stroke();
-          label(String(it.n), 23, 800, inkOn(it.color));
-        });
+        upright(
+          it.x,
+          it.y,
+          it.s,
+          () => {
+            ctx.beginPath();
+            ctx.arc(0, 0, ICON.step / 2, 0, Math.PI * 2);
+            ctx.fillStyle = it.color;
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = INK;
+            ctx.stroke();
+            label(String(it.n), 23, 800, inkOn(it.color));
+          },
+          it.r,
+        );
         break;
       case "text":
         if (it.text)
-          upright(it.x, it.y, it.s, () => label(it.text, ICON.text, 700, it.color, { color: INK, width: 6 }));
+          upright(it.x, it.y, it.s, () => label(it.text, ICON.text, 700, it.color, { color: INK, width: 6 }), it.r);
         break;
     }
   }

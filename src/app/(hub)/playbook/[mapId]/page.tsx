@@ -12,7 +12,7 @@ import { listMatches } from "@/lib/data/matches";
 import { compStats, formatPct, record, sideStats } from "@/lib/stats/matches";
 import { STRATEGY_STATUS_LABEL, categoriesFor } from "@/lib/constants";
 import { PageBody } from "@/components/shell/page-header";
-import { listBoards } from "@/lib/data/boards";
+import { boardsFor } from "@/lib/data/boards";
 import { BoardStrip } from "@/components/boards/board-strip";
 import { EmptyState, FormNotice, Panel, DemoBadge } from "@/components/ui/panel";
 import { Comp, SmallSample } from "@/components/ui/agent";
@@ -40,7 +40,7 @@ export default async function MapPage({
     notes: await getMapNotes(tx, mapId),
     strategies: await strategiesForMap(tx, mapId),
     matches: await listMatches(tx, { map: mapId }),
-    boards: await listBoards(tx, { kind: "map", id: mapId }),
+    boards: await boardsFor(tx, { kind: "map", id: mapId }),
   }));
   const map = data.catalog.mapById.get(mapId);
   if (!map) notFound();
@@ -101,7 +101,8 @@ export default async function MapPage({
             <BoardStrip
               className="mt-5"
               title="Map boards"
-              boards={data.boards}
+              boards={data.boards.boards}
+              catalog={data.boards.catalog}
               canEdit={canEdit}
               newHref={`/boards/new?map=${map.id}`}
               description={`Default setups, retakes and general plans for ${map.name}. A strategy's own boards are on the strategy.`}

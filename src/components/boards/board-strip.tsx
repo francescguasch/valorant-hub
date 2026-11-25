@@ -1,11 +1,20 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { buttonClass } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { SECTION_LABEL, type BoardCard } from "@/lib/data/boards";
+import type { BoardCatalog } from "@/lib/boards/scene";
+import { SceneSvg } from "./scene-svg";
 
-export function BoardThumb({ board, showSection }: { board: BoardCard; showSection?: boolean }) {
+export function BoardThumb({
+  board,
+  catalog,
+  showSection,
+}: {
+  board: BoardCard;
+  catalog: BoardCatalog | null;
+  showSection?: boolean;
+}) {
   const meta = [board.map_name, board.side === "attack" ? "Attack" : board.side === "defense" ? "Defense" : null]
     .filter(Boolean)
     .join(" · ");
@@ -15,12 +24,15 @@ export function BoardThumb({ board, showSection }: { board: BoardCard; showSecti
       className="group flex min-w-0 flex-col border border-line bg-rail transition-colors hover:border-line-strong"
     >
       <div className="aspect-square overflow-hidden bg-[#10161d]">
-        {board.image_url ? (
-          <img
-            src={board.image_url}
-            alt=""
-            loading="lazy"
-            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        {catalog ? (
+          // Drawn live from the board's data, so it always matches the board itself.
+          <SceneSvg
+            scene={board.scene}
+            catalog={catalog}
+            mapId={board.map_id}
+            uid={`t-${board.id.slice(0, 8)}`}
+            title={board.title}
+            className="block size-full transition-transform duration-300 group-hover:scale-[1.03]"
           />
         ) : (
           <span className="type-display grid size-full place-items-center text-[28px] font-extrabold text-line-strong">
@@ -42,6 +54,7 @@ export function BoardThumb({ board, showSection }: { board: BoardCard; showSecti
 /** The boards that belong to one record, plus "New board" for staff. */
 export function BoardStrip({
   boards,
+  catalog,
   newHref,
   canEdit,
   title = "Tactics boards",
@@ -49,6 +62,7 @@ export function BoardStrip({
   className,
 }: {
   boards: BoardCard[];
+  catalog: BoardCatalog | null;
   newHref: string;
   canEdit: boolean;
   title?: string;
@@ -72,7 +86,7 @@ export function BoardStrip({
       {boards.length ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {boards.map((b) => (
-            <BoardThumb key={b.id} board={b} />
+            <BoardThumb key={b.id} board={b} catalog={catalog} />
           ))}
         </div>
       ) : (
