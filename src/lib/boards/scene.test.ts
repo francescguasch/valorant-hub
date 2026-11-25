@@ -31,14 +31,83 @@ describe("tactics board scene", () => {
   it("moves every kind of item", () => {
     const pen: Item = { id: "p", t: "pen", pts: [0, 0, 10, 10], color: "#ffffff", w: 4, dash: false };
     expect((moveItem(pen, 5, -5) as typeof pen).pts).toEqual([5, -5, 15, 5]);
-    const arrow: Item = { id: "a", t: "arrow", x1: 0, y1: 0, x2: 1, y2: 1, color: "#ffffff", w: 4, dash: false, head: true };
+    const arrow: Item = {
+      id: "a",
+      t: "arrow",
+      x1: 0,
+      y1: 0,
+      x2: 1,
+      y2: 1,
+      color: "#ffffff",
+      w: 4,
+      dash: false,
+      head: true,
+    };
     expect(moveItem(arrow, 1, 2)).toMatchObject({ x1: 1, y1: 2, x2: 2, y2: 3 });
-    expect(itemBox({ id: "c", t: "circle", x: 50, y: 50, r: 10, color: "#ffffff" })).toEqual({ x: 40, y: 40, w: 20, h: 20 });
+    expect(itemBox({ id: "c", t: "circle", x: 50, y: 50, r: 10, color: "#ffffff" })).toEqual({
+      x: 40,
+      y: 40,
+      w: 20,
+      h: 20,
+    });
   });
 
   it("builds paths and callout labels", () => {
     expect(smoothPath([0, 0, 10, 10, 20, 0])).toMatch(/^M0 0Q10 10 15 5L20 0$/);
     expect(calloutLabel("A", "Main")).toBe("A Main");
     expect(calloutLabel("Mid", "Mid")).toBe("Mid");
+  });
+});
+
+import { abilityArea, ABILITY_AREAS, areaFor, areaKey, baseReach } from "./abilities";
+
+describe("ability areas", () => {
+  const ability = (dir = 0, reach = 1) =>
+    ({
+      id: "x",
+      t: "ability",
+      agent: "Viper",
+      slot: "Ability2",
+      x: 100,
+      y: 100,
+      team: "ally",
+      s: 1,
+      area: true,
+      dir,
+      reach,
+    }) as const;
+
+  it("finds areas by the API's ability names", () => {
+    expect(areaKey("Nebula / Dissipate")).toBe("nebula");
+    expect(ABILITY_AREAS[areaKey("Hunter's Fury")]).toBeDefined();
+    const viper = {
+      name: "Viper",
+      role: "controller",
+      icon: null,
+      abilities: [{ slot: "Ability2", name: "Toxic Screen", icon: null }],
+    };
+    expect(areaFor(viper, "Ability2")?.kind).toBe("wall");
+    expect(areaFor(viper, "Ultimate")).toBeNull();
+  });
+
+  it("scales circles to the map and points walls where they are aimed", () => {
+    const smoke = abilityArea(ability(), { kind: "circle", r: 4, style: "smoke" }, 6.7);
+    expect(smoke.circles[0]!.r).toBeCloseTo(26.8);
+    const wallDown = abilityArea(
+      ability(90),
+      { kind: "wall", length: 50, width: 1, from: "origin", style: "wall" },
+      6.7,
+    );
+    const ys = wallDown.polys[0]!.map((p) => p[1]);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(335, 0);
+    expect(wallDown.handle[1]).toBeCloseTo(435, 0);
+  });
+
+  it("puts the handle at reach 1 distance for every kind", () => {
+    for (const spec of Object.values(ABILITY_AREAS)) {
+      const shape = abilityArea(ability(30, 1), spec, 6.7);
+      const d = Math.hypot(shape.handle[0] - 100, shape.handle[1] - 100);
+      expect(d).toBeCloseTo(baseReach(spec, 6.7), 0);
+    }
   });
 });

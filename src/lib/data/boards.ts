@@ -68,6 +68,8 @@ export async function boardCatalog(tx: Tx): Promise<BoardCatalog> {
         id: m.id,
         name: m.name,
         minimap: a?.minimap ?? null,
+        // The minimap is drawn 40 units narrower than the board (20 each side).
+        scale: a?.perMetre ? Math.round(a.perMetre * (SIZE - 40) * 1000) / 1000 : null,
         callouts: (a?.callouts ?? []).map((c) => ({
           label: calloutLabel(c.superRegion, c.region),
           x: Math.round(c.x * SIZE),

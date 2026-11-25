@@ -60,7 +60,12 @@ type ApiAgent = {
 export type BoardAssets = {
   maps: Record<
     string,
-    { minimap: string | null; callouts: { superRegion: string; region: string; x: number; y: number }[] }
+    {
+      minimap: string | null;
+      /** Minimap widths per in-game metre (1 m = 100 units). */
+      perMetre: number | null;
+      callouts: { superRegion: string; region: string; x: number; y: number }[];
+    }
   >;
   agents: Record<string, { icon: string | null; abilities: { slot: string; name: string; icon: string | null }[] }>;
 };
@@ -80,6 +85,7 @@ export async function boardAssets(): Promise<BoardAssets> {
     const { xMultiplier: xm = 0, yMultiplier: ym = 0, xScalarToAdd: xa = 0, yScalarToAdd: ya = 0 } = m;
     out.maps[m.displayName.toLowerCase()] = {
       minimap: m.displayIcon,
+      perMetre: xm ? Math.abs(xm) * 100 : null,
       // valorant-api: minimap x comes from the game's y axis and vice versa.
       callouts: (m.callouts ?? []).map((c) => ({
         superRegion: c.superRegionName,

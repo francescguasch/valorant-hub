@@ -51,6 +51,7 @@ import {
   type Scene,
   type Team,
 } from "@/lib/boards/scene";
+import { areaFor, baseReach, DEFAULT_SCALE, isDirectional, type AreaSpec } from "@/lib/boards/abilities";
 import { saveBoard } from "@/app/(hub)/boards/actions";
 import { SceneSvg, slotKey } from "./scene-svg";
 
@@ -62,6 +63,7 @@ type Placement =
   | { t: "step" };
 type Drag =
   | { mode: "move"; id: string; sx: number; sy: number; orig: Item; before: Scene; moved: boolean }
+  | { mode: "aim"; id: string; before: Scene; moved: boolean; history: boolean }
   | { mode: "draw"; id: string; ax: number; ay: number; before: Scene };
 
 export type BoardParentRef = { kind: "strategy" | "opponent" | "vod" | "session" | "match"; id: string };
@@ -169,6 +171,10 @@ export function BoardEditor({
     [catalog.agents],
   );
   const shownAgent = catalog.agents.find((a) => a.name === activeAgent) ?? null;
+  const agentByName = useMemo(() => new Map(catalog.agents.map((a) => [a.name.toLowerCase(), a])), [catalog.agents]);
+  const scale = catalog.maps.find((m) => m.id === mapId)?.scale ?? DEFAULT_SCALE;
+  const specOf = (it: Item | null): AreaSpec | null =>
+    it?.t === "ability" ? areaFor(agentByName.get(it.agent.toLowerCase()), it.slot) : null;
 
   // --- history --------------------------------------------------------------
   const commit = useCallback((next: Scene, before?: Scene) => {
@@ -244,14 +250,18 @@ export function BoardEditor({
     return true;
   };
 
-  const place = (pl: Placement, p: { x: number; y: number }, keep: boolean) => {
-    if (full()) return;
+  const place = (pl: Placement, p: { x: number; y: number }, keep: boolean): Item | null => {
+    if (full()) return null;
     const s = sceneRef.current;
     const base = { id: newId(), x: p.x, y: p.y, s: 1 };
     let item: Item;
     if (pl.t === "agent") item = { ...base, t: "agent", agent: pl.agent, team };
-    else if (pl.t === "ability") item = { ...base, t: "ability", agent: pl.agent, slot: pl.slot, team };
-    else if (pl.t === "marker") item = { ...base, t: "marker", kind: pl.kind, color };
+    else if (pl.t === "ability") {
+      // With its area drawn, the icon shrinks so the smoke or wall stays readable.
+      const spec = areaFor(agentByName.get(pl.agent.toLowerCase()), pl.slot);
+      const size = spec ? (spec.style === "smoke" ? 0.6 : 0.75) : 1;
+      item = { ...base, s: size, t: "ability", agent: pl.agent, slot: pl.slot, team, area: true, dir: 0, reach: 1 };
+    } else if (pl.t === "marker") item = { ...base, t: "marker", kind: pl.kind, color };
     else {
       const n = Math.min(99, s.items.reduce((m, i) => (i.t === "step" ? Math.max(m, i.n) : m), 0) + 1);
       item = { ...base, t: "step", n, color };
@@ -262,12 +272,22 @@ export function BoardEditor({
       setPlacement(null);
       setTool("select");
     }
+    return item;
   };
 
   const onBoardPointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const p = toBoard(e);
-    if (placement) return place(placement, p, e.shiftKey);
+    if (placement) {
+      const item = place(placement, p, e.shiftKey);
+      // Walls, cones and lines: keep the button down and drag to aim them.
+      const spec = specOf(item);
+      if (item && spec && isDirectional(spec)) {
+        dragRef.current = { mode: "aim", id: item.id, before: sceneRef.current, moved: false, history: false };
+        svgRef.current?.setPointerCapture(e.pointerId);
+      }
+      return;
+    }
     if (tool === "select" || tool === "erase") {
       setSelected(null);
       return;
@@ -320,10 +340,38 @@ export function BoardEditor({
     svgRef.current?.setPointerCapture(e.pointerId);
   };
 
+  const onHandlePointerDown = (e: ReactPointerEvent<SVGCircleElement>, item: Item) => {
+    e.stopPropagation();
+    dragRef.current = { mode: "aim", id: item.id, before: sceneRef.current, moved: false, history: true };
+    svgRef.current?.setPointerCapture(e.pointerId);
+  };
+
   const onPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
     const d = dragRef.current;
     if (!d) return;
     const p = toBoard(e);
+    if (d.mode === "aim") {
+      setScene((s) => ({
+        ...s,
+        items: s.items.map((i) => {
+          if (i.id !== d.id || i.t !== "ability") return i;
+          const spec = specOf(i);
+          if (!spec) return i;
+          const dx = p.x - i.x;
+          const dy = p.y - i.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 6) return i;
+          d.moved = true;
+          const reach = Math.min(4, Math.max(0.2, dist / baseReach(spec, scale)));
+          const dir = Math.round((Math.atan2(dy, dx) * 180) / Math.PI);
+          // A fresh placement only aims; the handle also resizes.
+          return isDirectional(spec) && !d.history
+            ? { ...i, dir }
+            : { ...i, dir, reach: Math.round(reach * 100) / 100 };
+        }),
+      }));
+      return;
+    }
     if (d.mode === "move") {
       const dx = p.x - d.sx;
       const dy = p.y - d.sy;
@@ -368,6 +416,14 @@ export function BoardEditor({
     dragRef.current = null;
     if (!d) return;
     const s = sceneRef.current;
+    if (d.mode === "aim") {
+      if (d.moved && d.history) {
+        setPast((p) => [...p.slice(-79), d.before]);
+        setFuture([]);
+      }
+      if (d.moved) setDirty(true);
+      return;
+    }
     if (d.mode === "move") {
       if (d.moved) {
         setPast((p) => [...p.slice(-79), d.before]);
@@ -702,6 +758,7 @@ export function BoardEditor({
               layerRef={layerRef}
               interactive
               onItemPointerDown={onItemPointerDown}
+              onHandlePointerDown={onHandlePointerDown}
               boardHandlers={{
                 onPointerDown: onBoardPointerDown,
                 onPointerMove: onPointerMove,
@@ -741,6 +798,7 @@ export function BoardEditor({
               onDuplicate={() => duplicateItem(selectedItem.id)}
               onFront={() => toFront(selectedItem.id)}
               onTeam={pickTeam}
+              spec={specOf(selectedItem)}
             />
           ) : null}
 
@@ -1142,8 +1200,10 @@ function SelectionPanel({
   onDuplicate,
   onFront,
   onTeam,
+  spec,
 }: {
   item: Item;
+  spec: AreaSpec | null;
   textInputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (patch: Partial<Item>) => void;
   onDelete: () => void;
@@ -1151,6 +1211,7 @@ function SelectionPanel({
   onFront: () => void;
   onTeam: (t: Team) => void;
 }) {
+  const directional = spec ? isDirectional(spec) : false;
   return (
     <div className="flex flex-col gap-3 border border-line-strong bg-panel p-4">
       <div className="flex items-center justify-between gap-2">
@@ -1194,9 +1255,56 @@ function SelectionPanel({
         </label>
       ) : null}
       {item.t === "agent" || item.t === "ability" ? <TeamToggle team={item.team} onChange={onTeam} /> : null}
+      {item.t === "ability" && spec ? (
+        <div className="flex flex-col gap-2 border-t border-line pt-3">
+          <label className="flex items-center gap-2 text-[14px] text-bone">
+            <input
+              type="checkbox"
+              checked={item.area}
+              onChange={(e) => onChange({ area: e.target.checked })}
+              className="size-4 accent-[var(--color-accent)]"
+            />
+            Show the ability&apos;s area
+          </label>
+          {item.area ? (
+            <>
+              {directional ? (
+                <label className="flex items-center gap-3 text-[14px] text-fog">
+                  Direction
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    step={1}
+                    value={((((item.dir + 180) % 360) + 360) % 360) - 180}
+                    onChange={(e) => onChange({ dir: Number(e.target.value) })}
+                    className="flex-1 accent-[var(--color-accent)]"
+                  />
+                </label>
+              ) : null}
+              <label className="flex items-center gap-3 text-[14px] text-fog">
+                {directional ? "Length" : "Size"}
+                <input
+                  type="range"
+                  min={0.2}
+                  max={3}
+                  step={0.05}
+                  value={item.reach}
+                  onChange={(e) => onChange({ reach: Number(e.target.value) })}
+                  className="flex-1 accent-[var(--color-accent)]"
+                />
+              </label>
+              <p className="text-[12.5px] text-dim">
+                Drag the white handle on the map to {directional ? "aim and stretch" : "resize"} it. Sizes follow the
+                game roughly.
+              </p>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {"s" in item ? (
         <label className="flex items-center gap-3 text-[14px] text-fog">
-          Size
+          {item.t === "ability" ? "Icon size" : "Size"}
           <input
             type="range"
             min={0.6}

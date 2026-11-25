@@ -12,6 +12,7 @@ import {
   type Item,
   type Scene,
 } from "@/lib/boards/scene";
+import { abilityArea, AREA_PAINT, areaFor, DEFAULT_SCALE } from "@/lib/boards/abilities";
 
 /**
  * Draws a tactics board as SVG. Pure (no hooks), so server pages use it for the
@@ -32,6 +33,8 @@ export type SceneSvgProps = {
   svgRef?: Ref<SVGSVGElement>;
   layerRef?: Ref<SVGGElement>;
   onItemPointerDown?: (e: ReactPointerEvent<SVGGElement>, item: Item) => void;
+  /** Drag handle that aims and sizes the selected ability's area (editor only). */
+  onHandlePointerDown?: (e: ReactPointerEvent<SVGCircleElement>, item: Item) => void;
   /** Pointer and drop handlers for the whole board (editor only). */
   boardHandlers?: Pick<
     DOMAttributes<SVGSVGElement>,
@@ -51,12 +54,14 @@ export function SceneSvg({
   svgRef,
   layerRef,
   onItemPointerDown,
+  onHandlePointerDown,
   boardHandlers,
   interactive,
 }: SceneSvgProps) {
   const map = catalog.maps.find((m) => m.id === mapId) ?? null;
   const agentIcon = new Map(catalog.agents.map((a) => [a.name.toLowerCase(), a]));
   const rot = scene.rot;
+  const scale = map?.scale ?? DEFAULT_SCALE;
   const clip = `${uid}-round`;
   const grid = `${uid}-grid`;
 
@@ -144,8 +149,11 @@ export function SceneSvg({
             onPointerDown={onItemPointerDown ? (e) => onItemPointerDown(e, item) : undefined}
             style={interactive ? { cursor: "pointer" } : undefined}
           >
-            <ItemShape item={item} rot={rot} clip={clip} icon={agentIcon} />
+            <ItemShape item={item} rot={rot} clip={clip} icon={agentIcon} scale={scale} />
             {selectedId === item.id ? <Selection item={item} rot={rot} /> : null}
+            {selectedId === item.id && onHandlePointerDown ? (
+              <AreaHandle item={item} icon={agentIcon} scale={scale} onPointerDown={onHandlePointerDown} />
+            ) : null}
           </g>
         ))}
       </g>
@@ -172,11 +180,13 @@ function ItemShape({
   rot,
   clip,
   icon,
+  scale,
 }: {
   item: Item;
   rot: number;
   clip: string;
   icon: Map<string, BoardCatalog["agents"][number]>;
+  scale: number;
 }) {
   switch (item.t) {
     case "circle":
@@ -274,35 +284,55 @@ function ItemShape({
     case "ability": {
       const a = icon.get(item.agent.toLowerCase());
       const ab = a?.abilities.find((x) => x.slot === item.slot);
+      const spec = item.area ? areaFor(a, item.slot) : null;
       const h = ICON.ability / 2;
+      const color = TEAM_COLOR[item.team];
+      let area = null;
+      if (spec) {
+        const shape = abilityArea(item, spec, scale);
+        const paint = AREA_PAINT[shape.style];
+        const common = {
+          fill: color,
+          fillOpacity: paint.fill,
+          stroke: color,
+          strokeOpacity: paint.stroke,
+          strokeWidth: 2.5,
+          strokeDasharray: paint.dash ? "9 7" : undefined,
+          strokeLinejoin: "round" as const,
+        };
+        area = (
+          <>
+            {shape.circles.map((c, i) => (
+              <circle key={`c${i}`} cx={c.cx} cy={c.cy} r={c.r} {...common} />
+            ))}
+            {shape.polys.map((p, i) => (
+              <polygon key={`p${i}`} points={p.map((q) => q.join(",")).join(" ")} {...common} />
+            ))}
+          </>
+        );
+      }
       return (
-        <g transform={upright(item.x, item.y, rot, item.s)}>
-          <rect
-            x={-h}
-            y={-h}
-            width={h * 2}
-            height={h * 2}
-            rx="9"
-            fill={INK}
-            stroke={TEAM_COLOR[item.team]}
-            strokeWidth="3.5"
-          />
-          {ab?.icon ? (
-            <image href={ab.icon} x={-h + 7} y={-h + 7} width={(h - 7) * 2} height={(h - 7) * 2} />
-          ) : (
-            <text
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontFamily={BOARD_FONT}
-              fontWeight="700"
-              fontSize="16"
-              fill="#fff"
-            >
-              {item.agent.slice(0, 1)}
-              {slotKey(item.slot)}
-            </text>
-          )}
-        </g>
+        <>
+          {area}
+          <g transform={upright(item.x, item.y, rot, item.s)}>
+            <rect x={-h} y={-h} width={h * 2} height={h * 2} rx="9" fill={INK} stroke={color} strokeWidth="3.5" />
+            {ab?.icon ? (
+              <image href={ab.icon} x={-h + 7} y={-h + 7} width={(h - 7) * 2} height={(h - 7) * 2} />
+            ) : (
+              <text
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontFamily={BOARD_FONT}
+                fontWeight="700"
+                fontSize="16"
+                fill="#fff"
+              >
+                {item.agent.slice(0, 1)}
+                {slotKey(item.slot)}
+              </text>
+            )}
+          </g>
+        </>
       );
     }
     case "marker": {
@@ -358,6 +388,49 @@ function ItemShape({
         </g>
       );
   }
+}
+
+function AreaHandle({
+  item,
+  icon,
+  scale,
+  onPointerDown,
+}: {
+  item: Item;
+  icon: Map<string, BoardCatalog["agents"][number]>;
+  scale: number;
+  onPointerDown: (e: ReactPointerEvent<SVGCircleElement>, item: Item) => void;
+}) {
+  if (item.t !== "ability" || !item.area) return null;
+  const spec = areaFor(icon.get(item.agent.toLowerCase()), item.slot);
+  if (!spec) return null;
+  const [hx, hy] = abilityArea(item, spec, scale).handle;
+  return (
+    <g>
+      <line
+        x1={item.x}
+        y1={item.y}
+        x2={hx}
+        y2={hy}
+        stroke="#ffffff"
+        strokeOpacity="0.6"
+        strokeWidth="1.5"
+        strokeDasharray="4 4"
+        pointerEvents="none"
+      />
+      <circle
+        cx={hx}
+        cy={hy}
+        r="11"
+        fill="#ffffff"
+        stroke={INK}
+        strokeWidth="3"
+        style={{ cursor: "grab" }}
+        data-handle={item.id}
+        onPointerDown={(e) => onPointerDown(e, item)}
+      />
+    </g>
+  );
 }
 
 export const slotKey = (slot: string) => ({ Grenade: "C", Ability1: "Q", Ability2: "E", Ultimate: "X" })[slot] ?? "";

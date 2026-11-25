@@ -9,6 +9,7 @@ import {
   type BoardCatalog,
   type Scene,
 } from "./scene";
+import { abilityArea, AREA_PAINT, areaFor, DEFAULT_SCALE } from "./abilities";
 
 /**
  * Paints a board on a canvas, mirroring components/boards/scene-svg.tsx, so it
@@ -75,6 +76,7 @@ export async function renderBoard(
   }
 
   const rot = (scene.rot * Math.PI) / 180;
+  const scale = map?.scale ?? DEFAULT_SCALE;
   ctx.save();
   ctx.translate(SIZE / 2, SIZE / 2);
   ctx.rotate(rot);
@@ -203,6 +205,37 @@ export async function renderBoard(
         const a = agents.get(it.agent.toLowerCase());
         const ab = a?.abilities.find((x) => x.slot === it.slot);
         const h = ICON.ability / 2;
+        const spec = it.area ? areaFor(a, it.slot) : null;
+        if (spec) {
+          const shape = abilityArea(it, spec, scale);
+          const paint = AREA_PAINT[shape.style];
+          const color = TEAM_COLOR[it.team];
+          const paths: Path2D[] = [];
+          for (const c of shape.circles) {
+            const p = new Path2D();
+            p.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+            paths.push(p);
+          }
+          for (const poly of shape.polys) {
+            const p = new Path2D();
+            poly.forEach(([px, py], i) => (i ? p.lineTo(px, py) : p.moveTo(px, py)));
+            p.closePath();
+            paths.push(p);
+          }
+          ctx.save();
+          ctx.fillStyle = color;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2.5;
+          ctx.lineJoin = "round";
+          if (paint.dash) ctx.setLineDash([9, 7]);
+          for (const p of paths) {
+            ctx.globalAlpha = paint.fill;
+            ctx.fill(p);
+            ctx.globalAlpha = paint.stroke;
+            ctx.stroke(p);
+          }
+          ctx.restore();
+        }
         upright(it.x, it.y, it.s, () => {
           ctx.beginPath();
           ctx.roundRect(-h, -h, h * 2, h * 2, 9);

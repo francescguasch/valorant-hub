@@ -42,6 +42,12 @@ const abilityItem = z.object({
   y: coord,
   team,
   s: scale,
+  /** Draw the ability's area (smoke, wall, cone…) under the icon. */
+  area: z.boolean().default(true),
+  /** Direction of walls, cones and lines, in degrees (0 = right, clockwise). */
+  dir: num.min(-720).max(720).default(0),
+  /** Area size relative to the in-game size. */
+  reach: num.min(0.2).max(4).default(1),
 });
 const markerItem = z.object({ id, t: z.literal("marker"), kind: z.enum(MARKERS), x: coord, y: coord, color, s: scale });
 const stepItem = z.object({
@@ -146,6 +152,8 @@ export type BoardMap = {
   name: string;
   minimap: string | null;
   callouts: { label: string; x: number; y: number }[];
+  /** Board units per in-game metre, from the minimap's scale. */
+  scale: number | null;
 };
 export type BoardAgent = {
   name: string;
