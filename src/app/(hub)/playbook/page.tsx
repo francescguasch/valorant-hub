@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Settings2 } from "lucide-react";
+import { PenTool, Settings2 } from "lucide-react";
 import { actorOf, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
 import { loadCatalog, type MapRow } from "@/lib/data/catalog";
@@ -35,11 +35,18 @@ export default async function PlaybookPage() {
         title="Map Playbook"
         description="Your own tactical base: map notes, callouts and T and CT side strategies."
         actions={
-          canEdit ? (
-            <Link href="/settings/maps" className={buttonClass("secondary")}>
-              <Settings2 className="size-4" aria-hidden /> Edit rotation
-            </Link>
-          ) : null
+          <>
+            {viewer.kind === "member" ? (
+              <Link href="/boards" className={buttonClass("secondary")}>
+                <PenTool className="size-4" aria-hidden /> Tactics boards
+              </Link>
+            ) : null}
+            {canEdit ? (
+              <Link href="/settings/maps" className={buttonClass("secondary")}>
+                <Settings2 className="size-4" aria-hidden /> Edit rotation
+              </Link>
+            ) : null}
+          </>
         }
       />
       <PageBody>

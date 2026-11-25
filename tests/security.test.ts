@@ -41,6 +41,7 @@ async function cleanup() {
     await tx`delete from public.invitations where note = 'SECTEST'`;
     await tx`delete from public.profiles where email like '%@sec.test'`;
     await tx`delete from auth.users where email like '%@sec.test'`;
+    await tx`delete from public.boards where title like 'SECTEST%'`;
     await tx`delete from public.players where nickname like 'SECTEST%'`;
   });
 }
@@ -158,6 +159,30 @@ describe.skipIf(!url)("row level security", () => {
     );
     await rejects(withActor(as(ids.zach), (tx) => tx`insert into storage.objects (bucket_id, name) values ('media', 'branding/x.png')`), "42501");
     await asSystem((tx) => tx`delete from storage.objects where name like 'people/%'`);
+  });
+
+  it("shows tactics boards where their record is visible, and lets only staff draw them", async () => {
+    const [m] = await asSystem((tx) => tx<{ id: string; map_id: string }[]>`select id, map_id from public.matches limit 1`);
+    const [o] = await asSystem((tx) => tx<{ id: string }[]>`select id from public.opponents limit 1`);
+    await withActor(as(ids.coach), (tx) => tx`insert into public.boards (title, map_id) values ('SECTEST map', ${m!.map_id})`);
+    await withActor(as(ids.coach), (tx) => tx`insert into public.boards (title, match_id) values ('SECTEST match', ${m!.id})`);
+    await withActor(as(ids.coach), (tx) => tx`insert into public.boards (title, opponent_id) values ('SECTEST scout', ${o!.id})`);
+    const sections = await asSystem((tx) => tx<{ title: string; section: string; map_id: string | null }[]>`
+      select title, section, map_id from public.boards where title like 'SECTEST%' order by title`);
+    expect(sections.map((r) => r.section)).toEqual(["playbook", "matches", "scouting"]);
+    expect(sections[1]!.map_id).toBe(m!.map_id); // a match board takes the match's map
+    await rejects(withActor(as(ids.zach), (tx) => tx`insert into public.boards (title) values ('SECTEST player')`), "42501");
+    expect(await withActor(as(ids.zach), (tx) => tx`select 1 from public.boards where title like 'SECTEST%'`)).toHaveLength(3);
+    // Visitors: playbook and scouting are private here, and match boards are never public.
+    expect(await withActor(null, (tx) => tx`select 1 from public.boards where title like 'SECTEST%'`)).toHaveLength(0);
+    await withActor(as(ids.owner), (tx) => tx`update public.team_settings set public_sections = '{overview,matches,analytics,roster,playbook}'`);
+    const open = await withActor(null, (tx) => tx<{ title: string }[]>`select title from public.boards where title like 'SECTEST%'`);
+    expect(open.map((r) => r.title)).toEqual(["SECTEST map"]);
+    await withActor(as(ids.owner), (tx) => tx`update public.team_settings set public_sections = '{overview,matches,analytics,roster}'`);
+    await rejects(
+      withActor(as(ids.coach), (tx) => tx`insert into public.boards (title, match_id, opponent_id) values ('SECTEST two', ${m!.id}, ${o!.id})`),
+      "23514",
+    );
   });
 
   it("treats blocked accounts as outsiders", async () => {

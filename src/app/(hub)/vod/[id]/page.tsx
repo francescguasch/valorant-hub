@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { actorOf, isStaff, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
+import { listBoards } from "@/lib/data/boards";
+import { BoardStrip } from "@/components/boards/board-strip";
 import { loadCatalog } from "@/lib/data/catalog";
 import { FEEDBACK_STATUS_LABEL } from "@/lib/constants";
 import { formatDay } from "@/lib/format";
@@ -27,10 +29,10 @@ export default async function VodDetailPage({ params, searchParams }: { params: 
     const vod = r?.match_id
       ? (await tx<{ vod_url: string | null }[]>`select vod_url from public.match_notes where match_id = ${r.match_id}`)[0]?.vod_url ?? null
       : null;
-    return { catalog: await loadCatalog(tx), r, vod };
+    return { catalog: await loadCatalog(tx), r, vod, boards: r ? await listBoards(tx, { kind: "vod", id }) : [] };
   });
   if (!data.r) notFound();
-  const { r, catalog } = data;
+  const { r, catalog, boards } = data;
 
   // Prefer the clip; otherwise open the match VOD at the timestamp.
   let video = r.clip_url;
@@ -108,6 +110,13 @@ export default async function VodDetailPage({ params, searchParams }: { params: 
             </dl>
           </Panel>
         </div>
+        <BoardStrip
+          className="mt-5"
+          boards={boards}
+          canEdit={canEdit}
+          newHref={`/boards/new?vod=${id}`}
+          description="What happened and what should have happened, drawn on the map."
+        />
       </PageBody>
     </>
   );

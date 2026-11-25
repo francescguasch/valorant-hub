@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { actorOf, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
+import { listBoards } from "@/lib/data/boards";
+import { BoardStrip } from "@/components/boards/board-strip";
 import { loadCatalog } from "@/lib/data/catalog";
 import { formatDay, formatDuration } from "@/lib/format";
 import { SESSION_STATUS_LABEL } from "@/lib/constants";
@@ -21,10 +23,10 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
   const { saved } = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const { viewer, settings, canEdit } = await sectionAccess("practice");
-  const { catalog, s, strategy } = await withActor(actorOf(viewer), async (tx) => {
+  const { catalog, s, strategy, boards } = await withActor(actorOf(viewer), async (tx) => {
     const s = (await tx.unsafe<SessionRow[]>(`${sessionSelect(settings.timezone)} where id = $1`, [id]))[0];
     const strategy = s?.strategy_id ? (await tx<{ id: string; name: string }[]>`select id, name from public.strategies where id = ${s.strategy_id}`)[0] : undefined;
-    return { catalog: await loadCatalog(tx), s, strategy };
+    return { catalog: await loadCatalog(tx), s, strategy, boards: s ? await listBoards(tx, { kind: "session", id }) : [] };
   });
   if (!s) notFound();
   const blocks: [string, string | null][] = [
@@ -100,6 +102,13 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
             </Panel>
           </div>
         </div>
+        <BoardStrip
+          className="mt-5"
+          boards={boards}
+          canEdit={canEdit}
+          newHref={`/boards/new?session=${id}`}
+          description="The plans to drill in this session."
+        />
       </PageBody>
     </>
   );

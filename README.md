@@ -14,7 +14,21 @@ One deployment serves one team: its own database, accounts, storage and URL.
 | 3 | Roster, Player Development (feedback, goals with history, weekly evolution), VOD Review, Practice Planner | **Done** |
 | 4 | Content-Security-Policy, notifications, automatic migrations, end-to-end tests, responsive review, deployment | **Done** |
 
-Ideas for later: an interactive whiteboard for strategies, and a second deployment for Hawaii UHE (see the end).
+| 5 | Tactics boards (ValoPlant-style drawings on the map), self-service profiles | **Done** |
+
+### Tactics boards
+
+ValoPlant can't be embedded in another site (it sends `frame-ancestors 'self'`), so the hub has its own board:
+minimaps with callouts and agent/ability icons from valorant-api.com, agents and utility for both teams, freehand,
+arrows, lines, zones, text, markers and numbered steps, rotation, undo/redo, and a background image (paste a ValoPlant
+export or a screenshot with Ctrl+V). Staff draw; everyone who can see the record sees the board. Boards hang off a map
+(Playbook), a strategy, an opponent (Scouting), a VOD review, a practice session or a match; `/boards` lists them all.
+
+On save, the editor paints the board on a canvas and uploads it to Storage (`media/boards/`), which gives thumbnails
+and the download. The drawing itself is stored as JSON (`boards.scene`, validated by `src/lib/boards/scene.ts`), so
+boards stay editable and render sharply at any size.
+
+Next: a second deployment for Hawaii UHE (see the end).
 
 ## Stack
 
@@ -39,6 +53,9 @@ cookies and image uploads.
 - **Roles:** `owner`, `coach`, `player`, enforced in the database by RLS policies and triggers
   (`supabase/migrations/20261124000200_security.sql`), and checked again in every server action.
 - **Private feedback** is readable only by the staff and the player it belongs to.
+- **Self-service:** every member edits their own name and photo; a linked player edits their own roster profile
+  (nickname, photo, real name, agent pool) but not their team role or the staff's notes. Members upload only into
+  `media/people/<their id>/`.
 - **Coach notes** on matches are staff-only.
 - **Visitor (read-only) mode:** the owner chooses which sections anyone with the link may view. Playbook, scouting
   and VOD review start private. Player Development and Settings can never be public. Visitors can't write anything.
@@ -62,6 +79,8 @@ src/lib/db.ts          Postgres access with RLS (withActor / asSystem)
 src/lib/migrate.ts     applies pending migrations on start-up (tracked in app.schema_migrations)
 src/lib/auth/          viewer resolution, role checks, invitation/reset codes
 src/lib/stats/         match statistics (pure functions + unit tests)
+src/lib/boards/        tactics board model, geometry and canvas export
+src/components/boards/ board editor, SVG renderer, thumbnails
 supabase/migrations/   schema, security, catalogue seed, demo data
 supabase/setup.sql     all migrations in one file, for the Supabase SQL editor
 tests/                 database security tests

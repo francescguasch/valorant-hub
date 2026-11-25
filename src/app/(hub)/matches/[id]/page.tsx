@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { actorOf, isStaff, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
+import { listBoards } from "@/lib/data/boards";
+import { BoardStrip } from "@/components/boards/board-strip";
 import { compAgents, loadCatalog } from "@/lib/data/catalog";
 import { getMatch } from "@/lib/data/matches";
 import { formatPct, ratio } from "@/lib/stats/matches";
@@ -32,9 +34,13 @@ export default async function MatchPage({
   const { saved } = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const { viewer, canEdit } = await sectionAccess("matches");
-  const data = await withActor(actorOf(viewer), async (tx) => ({ catalog: await loadCatalog(tx), detail: await getMatch(tx, id) }));
+  const data = await withActor(actorOf(viewer), async (tx) => ({
+    catalog: await loadCatalog(tx),
+    detail: await getMatch(tx, id),
+    boards: await listBoards(tx, { kind: "match", id }),
+  }));
   if (!data.detail) notFound();
-  const { catalog, detail } = data;
+  const { catalog, detail, boards } = data;
   const m = detail.match;
   const opp = catalog.opponentById.get(m.opponent_id);
   const map = catalog.mapById.get(m.map_id);
@@ -233,6 +239,13 @@ export default async function MatchPage({
             </Panel>
           ) : null}
         </div>
+        <BoardStrip
+          className="mt-5"
+          boards={boards}
+          canEdit={canEdit}
+          newHref={`/boards/new?match=${id}`}
+          description="Rounds and situations from this match, drawn on the map. Only team members see them."
+        />
       </PageBody>
     </>
   );

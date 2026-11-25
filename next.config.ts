@@ -35,6 +35,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Tactics boards send their drawing data to a server action.
+  experimental: { serverActions: { bodySizeLimit: "2mb" } },
   // Every page depends on the signed-in user, so pages render on request.
   turbopack: {
     rules: {

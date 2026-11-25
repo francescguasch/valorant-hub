@@ -6,6 +6,8 @@ import { actorOf, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
 import { compAgents, loadCatalog } from "@/lib/data/catalog";
 import { getStrategy } from "@/lib/data/playbook";
+import { listBoards } from "@/lib/data/boards";
+import { BoardStrip } from "@/components/boards/board-strip";
 import { SIDE_LABEL, categoryLabel } from "@/lib/constants";
 import { formatDay } from "@/lib/format";
 import { PageBody } from "@/components/shell/page-header";
@@ -24,7 +26,11 @@ export default async function StrategyPage({ params, searchParams }: { params: P
   const { saved } = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const { viewer, canEdit } = await sectionAccess("playbook");
-  const { catalog, s } = await withActor(actorOf(viewer), async (tx) => ({ catalog: await loadCatalog(tx), s: await getStrategy(tx, id) }));
+  const { catalog, s, boards } = await withActor(actorOf(viewer), async (tx) => ({
+    catalog: await loadCatalog(tx),
+    s: await getStrategy(tx, id),
+    boards: await listBoards(tx, { kind: "strategy", id }),
+  }));
   if (!s) notFound();
   const map = catalog.mapById.get(s.map_id);
   const assignments = Array.isArray(s.assignments) ? s.assignments : [];
@@ -76,6 +82,12 @@ export default async function StrategyPage({ params, searchParams }: { params: P
         {saved ? <FormNotice>Strategy saved.</FormNotice> : null}
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-5">
+            <BoardStrip
+              boards={boards}
+              canEdit={canEdit}
+              newHref={`/boards/new?strategy=${s.id}`}
+              description="The plan drawn on the map: positions, utility and routes."
+            />
             {steps.length ? (
               <Panel title="Round execution">
                 <ol className="flex flex-col gap-3">

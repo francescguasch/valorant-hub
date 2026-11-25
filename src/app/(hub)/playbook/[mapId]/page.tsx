@@ -12,6 +12,8 @@ import { listMatches } from "@/lib/data/matches";
 import { compStats, formatPct, record, sideStats } from "@/lib/stats/matches";
 import { STRATEGY_STATUS_LABEL, categoriesFor } from "@/lib/constants";
 import { PageBody } from "@/components/shell/page-header";
+import { listBoards } from "@/lib/data/boards";
+import { BoardStrip } from "@/components/boards/board-strip";
 import { EmptyState, FormNotice, Panel, DemoBadge } from "@/components/ui/panel";
 import { Comp, SmallSample } from "@/components/ui/agent";
 import { buttonClass } from "@/components/ui/button";
@@ -38,6 +40,7 @@ export default async function MapPage({
     notes: await getMapNotes(tx, mapId),
     strategies: await strategiesForMap(tx, mapId),
     matches: await listMatches(tx, { map: mapId }),
+    boards: await listBoards(tx, { kind: "map", id: mapId }),
   }));
   const map = data.catalog.mapById.get(mapId);
   if (!map) notFound();
@@ -93,7 +96,17 @@ export default async function MapPage({
         {sp.saved ? <FormNotice>Saved.</FormNotice> : null}
         {sp.deleted ? <FormNotice>Strategy deleted.</FormNotice> : null}
         {tab === "overview" ? (
-          <Overview mapId={map.id} notes={data.notes} canEdit={canEdit} catalog={data.catalog} matches={data.matches} />
+          <>
+            <Overview mapId={map.id} notes={data.notes} canEdit={canEdit} catalog={data.catalog} matches={data.matches} />
+            <BoardStrip
+              className="mt-5"
+              title="Map boards"
+              boards={data.boards}
+              canEdit={canEdit}
+              newHref={`/boards/new?map=${map.id}`}
+              description={`Default setups, retakes and general plans for ${map.name}. A strategy's own boards are on the strategy.`}
+            />
+          </>
         ) : (
           <SideView
             mapId={map.id}

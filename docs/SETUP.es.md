@@ -91,6 +91,15 @@ sin cuenta, sin poder editar. Cámbialo en **Settings → Visitor access**.
 próximas 48 horas, seguimientos de feedback pendientes, sesiones sin resultados y tareas de VOD abiertas. Se van solas
 cuando el asunto queda resuelto.
 
+**Pizarras tácticas:** en cada estrategia, mapa, rival, VOD, entrenamiento y partido hay un bloque **Tactics boards**.
+El staff pulsa **New board** y dibuja sobre el minimapa: agentes y habilidades (aliados o enemigos), flechas, trazos,
+zonas, texto, marcadores y pasos numerados. Al guardar se crea también la imagen, que los jugadores ven y pueden
+descargar (**Download image**). Si preferís dibujar en ValoPlant, pegad su imagen exportada con Ctrl+V dentro del
+editor (o en **Board → Image**) y el enlace en **Details**. Todas las pizarras están en **Map Playbook → Tactics boards**.
+
+**Perfiles:** cada persona cambia su nombre y su foto en **Settings → Your account**. Los jugadores vinculados al roster
+editan ahí también su nickname, nombre real, foto del roster y agentes.
+
 ## 7. Actualizaciones
 
 Cada vez que se sube código nuevo a la rama `main` de GitHub, Vercel publica la web otra vez en 1–2 minutos.
