@@ -72,7 +72,7 @@ const DATASETS: Record<string, (tx: Tx, sp: URLSearchParams) => Promise<Table>> 
   strategies: (tx) =>
     query(tx, "Strategies", `
       select mp.name as map, s.side, s.category, s.name, s.status, s.objective, s.description, s.starting_positions,
-             s.utility_usage, s.timing, s.callouts, s.execution, s.alternatives, s.common_mistakes, s.coaching_notes,
+             s.utility_usage, s.timing, s.callouts, s.execution, s.strong_points, s.weak_points,
              s.youtube_url, s.archived_at is not null as archived, s.updated_at::date as updated
       from public.strategies s join public.maps mp on mp.id = s.map_id order by mp.name, s.side, s.category, s.name`),
   practice: (tx) =>

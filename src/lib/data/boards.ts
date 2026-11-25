@@ -36,6 +36,7 @@ export type BoardCard = {
   map_name: string | null;
   side: "attack" | "defense" | null;
   section: BoardSection;
+  created_at: string;
   updated_at: string;
 };
 
@@ -86,7 +87,8 @@ export async function boardCatalog(tx: Tx): Promise<BoardCatalog> {
 }
 
 const CARD_COLUMNS = (tx: Tx) => tx`
-  b.id, b.title, b.map_id, b.scene, b.image_url, mp.name as map_name, b.side, b.section, b.updated_at::text as updated_at`;
+  b.id, b.title, b.map_id, b.scene, b.image_url, mp.name as map_name, b.side, b.section,
+  b.created_at::text as created_at, b.updated_at::text as updated_at`;
 
 /** Boards attached to one record, or the boards of a map that belong to no record. */
 export async function listBoards(tx: Tx, where: BoardParent | { kind: "map"; id: string } | { kind: "all" }) {
@@ -102,6 +104,18 @@ export async function listBoards(tx: Tx, where: BoardParent | { kind: "map"; id:
     ${filter}
     order by b.updated_at desc`;
   return rows.map((r) => ({ ...r, scene: parseScene(r.scene) }));
+}
+
+/** Each strategy's own board (its first) on one map, for the strategy cards. */
+export async function strategyBoards(tx: Tx, mapId: string) {
+  const rows = await tx<(Omit<BoardCard, "scene"> & { scene: unknown; strategy_id: string })[]>`
+    select distinct on (b.strategy_id) ${CARD_COLUMNS(tx)}, b.strategy_id
+    from public.boards b left join public.maps mp on mp.id = b.map_id
+    join public.strategies s on s.id = b.strategy_id
+    where s.map_id = ${mapId}
+    order by b.strategy_id, b.created_at`;
+  const byStrategy = new Map(rows.map((r) => [r.strategy_id, { ...r, scene: parseScene(r.scene) } as BoardCard]));
+  return { byStrategy, catalog: rows.length ? await boardCatalog(tx) : null };
 }
 
 /** Boards plus what's needed to draw them (only fetched when there are boards). */

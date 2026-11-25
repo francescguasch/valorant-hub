@@ -12,9 +12,12 @@ import { listMatches } from "@/lib/data/matches";
 import { compStats, formatPct, record, sideStats } from "@/lib/stats/matches";
 import { STRATEGY_STATUS_LABEL, categoriesFor } from "@/lib/constants";
 import { PageBody } from "@/components/shell/page-header";
-import { boardsFor } from "@/lib/data/boards";
+import { boardsFor, strategyBoards, type BoardCard } from "@/lib/data/boards";
 import { BoardStrip } from "@/components/boards/board-strip";
-import { EmptyState, FormNotice, Panel, DemoBadge } from "@/components/ui/panel";
+import { PointList } from "@/components/boards/feature-board";
+import { SceneSvg } from "@/components/boards/scene-svg";
+import type { BoardCatalog } from "@/lib/boards/scene";
+import { FormNotice, Panel, DemoBadge } from "@/components/ui/panel";
 import { Comp, SmallSample } from "@/components/ui/agent";
 import { buttonClass } from "@/components/ui/button";
 import { MatchList } from "@/components/matches/match-list";
@@ -41,6 +44,7 @@ export default async function MapPage({
     strategies: await strategiesForMap(tx, mapId),
     matches: await listMatches(tx, { map: mapId }),
     boards: await boardsFor(tx, { kind: "map", id: mapId }),
+    strategyBoards: await strategyBoards(tx, mapId),
   }));
   const map = data.catalog.mapById.get(mapId);
   if (!map) notFound();
@@ -49,7 +53,7 @@ export default async function MapPage({
   const showArchived = sp.archived === "1";
   const live = data.strategies.filter((s) => !s.archived_at);
   const tabs: { key: Tab; label: string; count?: number }[] = [
-    { key: "overview", label: "Map overview" },
+    { key: "overview", label: "Gameplan" },
     { key: "t", label: "T side", count: live.filter((s) => s.side === "t").length },
     { key: "ct", label: "CT side", count: live.filter((s) => s.side === "ct").length },
   ];
@@ -57,7 +61,9 @@ export default async function MapPage({
   return (
     <>
       <header className="relative isolate overflow-hidden border-b border-line">
-        {map.splash ? <img src={map.splash} alt="" className="absolute inset-0 -z-10 size-full object-cover opacity-45" /> : null}
+        {map.splash ? (
+          <img src={map.splash} alt="" className="absolute inset-0 -z-10 size-full object-cover opacity-45" />
+        ) : null}
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-ink via-ink/75 to-ink/20" />
         <div className="absolute inset-x-0 bottom-0 -z-10 h-1/2 bg-gradient-to-t from-ink to-transparent" />
         <div className="px-5 pt-6 sm:px-8">
@@ -66,11 +72,16 @@ export default async function MapPage({
           </Link>
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4 pb-6">
             <div>
-              <p className="text-[14px] text-fog">{map.in_rotation ? "Active competitive pool" : "Outside competitive rotation"}</p>
+              <p className="text-[14px] text-fog">
+                {map.in_rotation ? "Active competitive pool" : "Outside competitive rotation"}
+              </p>
               <h1 className="type-display text-[64px] font-extrabold text-bone sm:text-[88px]">{map.name}</h1>
             </div>
             {canEdit ? (
-              <Link href={`/playbook/${map.id}/new?side=${tab === "ct" ? "ct" : "t"}`} className={buttonClass("primary")}>
+              <Link
+                href={`/playbook/${map.id}/new?side=${tab === "ct" ? "ct" : "t"}`}
+                className={buttonClass("primary")}
+              >
                 <Plus className="size-4" aria-hidden /> Add strategy
               </Link>
             ) : null}
@@ -81,11 +92,20 @@ export default async function MapPage({
                 key={t.key}
                 href={`/playbook/${map.id}${t.key === "overview" ? "" : `?tab=${t.key}`}`}
                 aria-current={tab === t.key ? "page" : undefined}
-                className={clsx("relative pb-3 text-[15px] font-medium", tab === t.key ? "text-bone" : "text-fog hover:text-bone")}
+                className={clsx(
+                  "relative pb-3 text-[15px] font-medium",
+                  tab === t.key ? "text-bone" : "text-fog hover:text-bone",
+                )}
               >
                 {t.label}
                 {t.count !== undefined ? <span className="ml-1.5 text-dim">{t.count}</span> : null}
-                <span aria-hidden className={clsx("absolute inset-x-0 bottom-0 h-[2px] bg-accent", tab === t.key ? "opacity-100" : "opacity-0")} />
+                <span
+                  aria-hidden
+                  className={clsx(
+                    "absolute inset-x-0 bottom-0 h-[2px] bg-accent",
+                    tab === t.key ? "opacity-100" : "opacity-0",
+                  )}
+                />
               </Link>
             ))}
           </nav>
@@ -96,27 +116,28 @@ export default async function MapPage({
         {sp.saved ? <FormNotice>Saved.</FormNotice> : null}
         {sp.deleted ? <FormNotice>Strategy deleted.</FormNotice> : null}
         {tab === "overview" ? (
-          <>
-            <Overview mapId={map.id} notes={data.notes} canEdit={canEdit} catalog={data.catalog} matches={data.matches} />
+          <Overview mapId={map.id} notes={data.notes} canEdit={canEdit} catalog={data.catalog} matches={data.matches}>
             <BoardStrip
-              className="mt-5"
               title="Map boards"
               boards={data.boards.boards}
               catalog={data.boards.catalog}
               canEdit={canEdit}
               newHref={`/boards/new?map=${map.id}`}
-              description={`Default setups, retakes and general plans for ${map.name}. A strategy's own boards are on the strategy.`}
+              description={`Defaults, setups, map control and rotations on ${map.name}. Each strategy has its own board on the T and CT tabs.`}
             />
-          </>
+          </Overview>
         ) : (
           <SideView
             mapId={map.id}
             side={tab}
-            strategies={data.strategies.filter((s) => s.side === tab && (showArchived ? true : !s.archived_at) && (!status || s.status === status))}
+            strategies={data.strategies.filter(
+              (s) => s.side === tab && (showArchived ? true : !s.archived_at) && (!status || s.status === status),
+            )}
             catalog={data.catalog}
             canEdit={canEdit}
             status={status}
             showArchived={showArchived}
+            boards={data.strategyBoards}
           />
         )}
       </PageBody>
@@ -130,7 +151,9 @@ function Overview({
   canEdit,
   catalog,
   matches,
+  children,
 }: {
+  children?: React.ReactNode;
   mapId: string;
   notes: Awaited<ReturnType<typeof getMapNotes>>;
   canEdit: boolean;
@@ -140,50 +163,62 @@ function Overview({
   const r = record(matches);
   const sides = sideStats(matches);
   const comps = compStats(matches).slice(0, 4);
-  const blocks: [string, string | null | undefined][] = [
-    ["Overview", notes?.overview],
-    ["Characteristics", notes?.characteristics],
-    ["Important areas", notes?.important_areas],
-    ["Callouts", notes?.callouts],
-    ["Team strengths", notes?.strengths],
-    ["Team weaknesses", notes?.weaknesses],
-    ["Recommended compositions", notes?.recommended_comps],
-  ];
-  const filled = blocks.filter(([, v]) => v);
+  const edit = canEdit ? (
+    <Link href={`/playbook/${mapId}/notes`} className={buttonClass("ghost")}>
+      <Pencil className="size-4" aria-hidden /> Edit
+    </Link>
+  ) : null;
+  const empty = (what: string) => (
+    <p className="text-dim">{canEdit ? `Write ${what} with Edit.` : "The staff hasn't written this yet."}</p>
+  );
+  const text = (v: string | null | undefined) => (
+    <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-bone">{v}</p>
+  );
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-      <Panel
-        title="Map notes"
-        action={
-          canEdit ? (
-            <Link href={`/playbook/${mapId}/notes`} className={buttonClass("ghost")}>
-              <Pencil className="size-4" aria-hidden /> Edit
-            </Link>
-          ) : null
-        }
-      >
-        {filled.length === 0 && !notes?.callouts_image_url ? (
-          <EmptyState title="No notes for this map yet">
-            {canEdit ? "Add the overview, callouts, strengths and weaknesses your team works with." : "The staff hasn't written notes for this map yet."}
-          </EmptyState>
-        ) : (
-          <div className="flex flex-col gap-6">
+      <div className="flex min-w-0 flex-col gap-5">
+        <Panel title="Gameplan" description="How we want to play this map, on each side." action={edit}>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {(
+              [
+                ["Attack (T side)", notes?.gameplan_attack, "the attack gameplan"],
+                ["Defense (CT side)", notes?.gameplan_defense, "the defense gameplan"],
+              ] as const
+            ).map(([label, value, what]) => (
+              <div key={label} className="min-w-0">
+                <h3 className="type-display mb-2 text-[17px] font-bold text-accent">{label}</h3>
+                {value ? text(value) : empty(what)}
+              </div>
+            ))}
+          </div>
+        </Panel>
+        <Panel
+          title="How we read the map"
+          description="Key areas, map control, rotations and timings, as the coach sees them."
+          action={edit}
+        >
+          <div className="flex flex-col gap-5">
+            {notes?.map_reading ? text(notes.map_reading) : empty("how the team reads this map")}
             {notes?.callouts_image_url ? (
               <a href={notes.callouts_image_url} target="_blank" rel="noopener noreferrer">
                 <img src={notes.callouts_image_url} alt="Callouts" className="w-full border border-line" />
               </a>
             ) : null}
-            <dl className="grid gap-6 lg:grid-cols-2">
-              {filled.map(([label, value]) => (
-                <div key={label}>
-                  <dt className="type-display mb-1.5 text-[16px] font-bold text-bone">{label}</dt>
-                  <dd className="whitespace-pre-wrap text-[14.5px] leading-relaxed text-fog">{value}</dd>
-                </div>
-              ))}
-            </dl>
           </div>
-        )}
-      </Panel>
+        </Panel>
+        {children}
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Panel title="Strong points" description="Where we are good on this map.">
+            <PointList text={notes?.strengths ?? null} tone="strong" />
+          </Panel>
+          <Panel title="Weak points" description="What to fix or avoid here.">
+            <PointList text={notes?.weaknesses ?? null} tone="weak" />
+          </Panel>
+        </div>
+        {notes?.recommended_comps ? (
+          <Panel title="Recommended compositions">{text(notes.recommended_comps)}</Panel>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-5">
         <Panel title="History on this map">
@@ -204,7 +239,11 @@ function Overview({
                   </div>
                 ))}
               </dl>
-              {r.smallSample ? <div className="mt-2"><SmallSample played={r.played} /></div> : null}
+              {r.smallSample ? (
+                <div className="mt-2">
+                  <SmallSample played={r.played} />
+                </div>
+              ) : null}
               {comps.length ? (
                 <div className="mt-5 border-t border-line pt-4">
                   <p className="mb-3 text-[13px] text-fog">Compositions played here</p>
@@ -242,7 +281,9 @@ function SideView({
   canEdit,
   status,
   showArchived,
+  boards,
 }: {
+  boards: { byStrategy: Map<string, BoardCard>; catalog: BoardCatalog | null };
   mapId: string;
   side: "t" | "ct";
   strategies: Strategy[];
@@ -262,12 +303,18 @@ function SideView({
           <Link
             key={s ?? "all"}
             href={filterLink(s)}
-            className={clsx("border px-3 py-1.5", status === s ? "border-accent text-bone" : "border-line text-fog hover:text-bone")}
+            className={clsx(
+              "border px-3 py-1.5",
+              status === s ? "border-accent text-bone" : "border-line text-fog hover:text-bone",
+            )}
           >
             {s ? STRATEGY_STATUS_LABEL[s] : "All"}
           </Link>
         ))}
-        <Link href={filterLink(status, !showArchived)} className="ml-auto text-fog underline-offset-4 hover:text-bone hover:underline">
+        <Link
+          href={filterLink(status, !showArchived)}
+          className="ml-auto text-fog underline-offset-4 hover:text-bone hover:underline"
+        >
           {showArchived ? "Hide archived" : "Show archived"}
         </Link>
       </div>
@@ -280,7 +327,10 @@ function SideView({
                 {cat.label} <span className="ml-1 text-[15px] text-dim">{items.length}</span>
               </h2>
               {canEdit ? (
-                <Link href={`/playbook/${mapId}/new?side=${side}&category=${cat.value}`} className="inline-flex items-center gap-1 text-[13.5px] text-fog hover:text-bone">
+                <Link
+                  href={`/playbook/${mapId}/new?side=${side}&category=${cat.value}`}
+                  className="inline-flex items-center gap-1 text-[13.5px] text-fog hover:text-bone"
+                >
                   <Plus className="size-3.5" aria-hidden /> Add
                 </Link>
               ) : null}
@@ -291,19 +341,31 @@ function SideView({
               <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
                 {items.map((s) => (
                   <li key={s.id}>
-                    <Link href={`/playbook/strategy/${s.id}`} className="flex h-full flex-col gap-2 border border-line bg-panel p-4 transition-colors hover:border-line-strong">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="font-semibold text-bone">{s.name}</p>
-                        <StatusBadge status={s.status} />
-                      </div>
-                      {s.objective || s.description ? <p className="line-clamp-2 text-[13.5px] text-fog">{s.objective ?? s.description}</p> : null}
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                        {s.comp_agent_ids.length ? <Comp agents={compAgents(catalog, s.comp_agent_ids)} size={22} /> : <span />}
-                        <span className="flex items-center gap-2 text-[12.5px] text-dim">
-                          {s.archived_at ? "Archived" : null}
-                          {s.is_demo ? <DemoBadge /> : null}
-                          {s.youtube_url ? <PlayCircle className="size-4 text-fog" aria-label="Has video" /> : null}
-                        </span>
+                    <Link
+                      href={`/playbook/strategy/${s.id}`}
+                      className="flex h-full gap-3 border border-line bg-panel p-3 transition-colors hover:border-line-strong"
+                    >
+                      <StrategyThumb board={boards.byStrategy.get(s.id)} catalog={boards.catalog} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-2 py-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-semibold text-bone">{s.name}</p>
+                          <StatusBadge status={s.status} />
+                        </div>
+                        {s.objective || s.description ? (
+                          <p className="line-clamp-2 text-[13.5px] text-fog">{s.objective ?? s.description}</p>
+                        ) : null}
+                        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                          {s.comp_agent_ids.length ? (
+                            <Comp agents={compAgents(catalog, s.comp_agent_ids)} size={22} />
+                          ) : (
+                            <span />
+                          )}
+                          <span className="flex items-center gap-2 text-[12.5px] text-dim">
+                            {s.archived_at ? "Archived" : null}
+                            {s.is_demo ? <DemoBadge /> : null}
+                            {s.youtube_url ? <PlayCircle className="size-4 text-fog" aria-label="Has video" /> : null}
+                          </span>
+                        </div>
                       </div>
                     </Link>
                   </li>
@@ -313,6 +375,26 @@ function SideView({
           </section>
         );
       })}
+    </div>
+  );
+}
+
+/** The strategy's own board in miniature, or an empty tile when it hasn't been drawn. */
+function StrategyThumb({ board, catalog }: { board: BoardCard | undefined; catalog: BoardCatalog | null }) {
+  return (
+    <div className="aspect-square w-[104px] shrink-0 overflow-hidden border border-line bg-[#10161d]">
+      {board && catalog ? (
+        <SceneSvg
+          scene={board.scene}
+          catalog={catalog}
+          mapId={board.map_id}
+          uid={`s-${board.id.slice(0, 8)}`}
+          title={board.title}
+          className="block size-full"
+        />
+      ) : (
+        <span className="grid size-full place-items-center text-[11.5px] text-dim">No board</span>
+      )}
     </div>
   );
 }

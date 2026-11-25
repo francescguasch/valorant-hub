@@ -26,9 +26,8 @@ export type StrategyInitial = {
   timing: string;
   callouts: string;
   execution: string;
-  alternatives: string;
-  common_mistakes: string;
-  coaching_notes: string;
+  strong_points: string;
+  weak_points: string;
   youtube_url: string;
 };
 
@@ -108,9 +107,14 @@ export function StrategyForm({
           />
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          {longField("description", "Description", "What the strategy is, in a few lines.", 3)}
-          {longField("objective", "Objective", "What winning the round looks like with this plan.", 3)}
+          {longField("description", "Description", "The strategy in words: what we do and why.", 4)}
+          {longField("objective", "Objective", "What winning the round looks like with this plan.", 4)}
+          {longField("strong_points", "Strong points", "Why it works: what it punishes, when it's best. One per line.", 4)}
+          {longField("weak_points", "Weak points", "What beats it and what to watch out for. One per line.", 4)}
         </div>
+        <p className="mt-3 text-[13px] text-fog">
+          Draw the strategy&apos;s board after saving: it appears at the top of the strategy page.
+        </p>
       </FormSection>
 
       <FormSection title="Composition and roles" description="Optional. Leave empty when the plan works with any lineup.">
@@ -192,10 +196,9 @@ export function StrategyForm({
 
 export type NotesInitial = {
   map_id: string;
-  overview: string;
-  characteristics: string;
-  important_areas: string;
-  callouts: string;
+  gameplan_attack: string;
+  gameplan_defense: string;
+  map_reading: string;
   strengths: string;
   weaknesses: string;
   recommended_comps: string;
@@ -205,25 +208,41 @@ export type NotesInitial = {
 export function MapNotesForm({ initial }: { initial: NotesInitial }) {
   const [state, formAction] = useForm(saveMapNotes);
   const v = state.values;
-  const f = (name: keyof NotesInitial, label: string, hint?: string) => (
-    <TextAreaField label={label} name={name} defaultValue={v?.[name] ?? initial[name]} hint={hint} maxLength={8000} />
+  const f = (name: keyof NotesInitial, label: string, hint?: string, rows = 4) => (
+    <TextAreaField label={label} name={name} rows={rows} defaultValue={v?.[name] ?? initial[name]} hint={hint} maxLength={8000} />
   );
   return (
-    <form action={formAction} className="flex max-w-5xl flex-col gap-6" noValidate>
+    <form action={formAction} className="flex max-w-5xl flex-col gap-8" noValidate>
       <input type="hidden" name="map_id" value={initial.map_id} />
       <FormAlert error={state.error} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        {f("overview", "Overview", "How the map plays in a few lines.")}
-        {f("characteristics", "Characteristics", "Layout, mechanics, sites.")}
-        {f("important_areas", "Important areas")}
-        {f("callouts", "Callouts", "Names the team uses, one per line.")}
-        {f("strengths", "Team strengths on this map")}
-        {f("weaknesses", "Team weaknesses on this map")}
-        <div className="lg:col-span-2">{f("recommended_comps", "Recommended compositions")}</div>
-      </div>
-      <ImageField label="Callouts image (optional)" name="callouts_image_url" initial={initial.callouts_image_url} kind="callouts" wide error={state.fields.callouts_image_url} />
+      <FormSection title="Gameplan" description="How we want to play this map, on each side.">
+        <div className="grid gap-4 lg:grid-cols-2">
+          {f("gameplan_attack", "Attack (T side)", "Defaults, map control, where we hit and when.", 9)}
+          {f("gameplan_defense", "Defense (CT side)", "Setups, who holds what, when we retake or stack.", 9)}
+        </div>
+      </FormSection>
+      <FormSection title="How we read the map" description="The coach's reading: key areas, rotations, timings, what decides rounds here.">
+        {f("map_reading", "How we read the map", undefined, 10)}
+        <div className="mt-4">
+          <ImageField
+            label="Callouts image (optional)"
+            name="callouts_image_url"
+            initial={initial.callouts_image_url}
+            kind="callouts"
+            wide
+            error={state.fields.callouts_image_url}
+          />
+        </div>
+      </FormSection>
+      <FormSection title="Strong and weak points" description="The team on this map. One point per line.">
+        <div className="grid gap-4 lg:grid-cols-2">
+          {f("strengths", "Strong points", undefined, 6)}
+          {f("weaknesses", "Weak points", undefined, 6)}
+        </div>
+        <div className="mt-4">{f("recommended_comps", "Recommended compositions", undefined, 3)}</div>
+      </FormSection>
       <div className="border-t border-line pt-6">
-        <SubmitButton pendingLabel="Saving…">Save map notes</SubmitButton>
+        <SubmitButton pendingLabel="Saving…">Save gameplan</SubmitButton>
       </div>
     </form>
   );

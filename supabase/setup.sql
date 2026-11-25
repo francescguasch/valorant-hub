@@ -1054,6 +1054,33 @@ drop policy if exists boards_write on public.boards;
 create policy boards_write on public.boards for all to authenticated
   using (app.is_staff()) with check (app.is_staff());
 
+-- >>> 20261126000300_gameplan_and_points.sql
+-- =============================================================================
+-- Map Playbook as the coach works: per map a gameplan (attack and defense) and
+-- how the team reads the map; per strategy its strong and weak points.
+-- Earlier map notes (overview, characteristics, important areas, callouts)
+-- are carried into "how we read the map" once, so nothing written is lost.
+-- Safe to run more than once.
+-- =============================================================================
+
+alter table public.map_notes
+  add column if not exists gameplan_attack text,
+  add column if not exists gameplan_defense text,
+  add column if not exists map_reading text;
+
+update public.map_notes
+set map_reading = concat_ws(E'\n\n',
+  overview,
+  characteristics,
+  case when important_areas is not null then 'Important areas:' || E'\n' || important_areas end,
+  case when callouts is not null then 'Callouts:' || E'\n' || callouts end)
+where map_reading is null
+  and coalesce(overview, characteristics, important_areas, callouts) is not null;
+
+alter table public.strategies
+  add column if not exists strong_points text,
+  add column if not exists weak_points text;
+
 -- >>> Record the migrations above as applied, so the app only runs newer ones.
 create table if not exists app.schema_migrations (name text primary key, applied_at timestamptz not null default now());
 insert into app.schema_migrations (name) values
@@ -1064,7 +1091,8 @@ insert into app.schema_migrations (name) values
   ('20261124000500_owner_bootstrap'),
   ('20261125000100_development_history'),
   ('20261126000100_self_service_profiles'),
-  ('20261126000200_tactics_boards')
+  ('20261126000200_tactics_boards'),
+  ('20261126000300_gameplan_and_points')
 on conflict (name) do nothing;
 
 -- >>> First owner: the result of this line is a one-time invitation code.

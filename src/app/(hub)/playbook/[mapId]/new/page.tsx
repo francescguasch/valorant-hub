@@ -48,9 +48,8 @@ export default async function NewStrategyPage({
             timing: "",
             callouts: "",
             execution: "",
-            alternatives: "",
-            common_mistakes: "",
-            coaching_notes: "",
+            strong_points: "",
+            weak_points: "",
             youtube_url: "",
           }}
         />

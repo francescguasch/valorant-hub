@@ -7,7 +7,7 @@ import { getMapNotes } from "@/lib/data/playbook";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
 import { MapNotesForm } from "../../forms";
 
-export const metadata: Metadata = { title: "Map notes" };
+export const metadata: Metadata = { title: "Gameplan" };
 
 export default async function MapNotesPage({ params }: { params: Promise<{ mapId: string }> }) {
   const { mapId } = await params;
@@ -20,15 +20,14 @@ export default async function MapNotesPage({ params }: { params: Promise<{ mapId
   const t = (v: string | null | undefined) => v ?? "";
   return (
     <>
-      <PageHeader title={`${map.name} notes`} description="What the team should know about this map." />
+      <PageHeader title={`${map.name} gameplan`} description="The gameplan and how the team reads this map." />
       <PageBody>
         <MapNotesForm
           initial={{
             map_id: map.id,
-            overview: t(notes?.overview),
-            characteristics: t(notes?.characteristics),
-            important_areas: t(notes?.important_areas),
-            callouts: t(notes?.callouts),
+            gameplan_attack: t(notes?.gameplan_attack),
+            gameplan_defense: t(notes?.gameplan_defense),
+            map_reading: t(notes?.map_reading),
             strengths: t(notes?.strengths),
             weaknesses: t(notes?.weaknesses),
             recommended_comps: t(notes?.recommended_comps),

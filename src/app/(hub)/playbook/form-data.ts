@@ -30,9 +30,8 @@ export function toInitial(s: Strategy): StrategyInitial {
     timing: t(s.timing),
     callouts: t(s.callouts),
     execution: t(s.execution),
-    alternatives: t(s.alternatives),
-    common_mistakes: t(s.common_mistakes),
-    coaching_notes: t(s.coaching_notes),
+    strong_points: t(s.strong_points),
+    weak_points: t(s.weak_points),
     youtube_url: t(s.youtube_url),
   };
 }

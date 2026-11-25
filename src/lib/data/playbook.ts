@@ -21,6 +21,8 @@ export type Strategy = {
   alternatives: string | null;
   common_mistakes: string | null;
   coaching_notes: string | null;
+  strong_points: string | null;
+  weak_points: string | null;
   youtube_url: string | null;
   status: "in_development" | "practicing" | "approved";
   archived_at: string | null;
@@ -29,6 +31,9 @@ export type Strategy = {
 };
 
 export type MapNotes = {
+  gameplan_attack: string | null;
+  gameplan_defense: string | null;
+  map_reading: string | null;
   overview: string | null;
   characteristics: string | null;
   important_areas: string | null;
@@ -41,6 +46,7 @@ export type MapNotes = {
 
 const STRATEGY_COLUMNS = `id, map_id, side, category, name, description, objective, comp_agent_ids, assignments,
   starting_positions, utility_usage, timing, callouts, execution, alternatives, common_mistakes, coaching_notes,
+  strong_points, weak_points,
   youtube_url, status, archived_at::text as archived_at, is_demo, updated_at::text as updated_at`;
 
 /** jsonb arrives parsed; guard against legacy rows stored as a JSON string. */
@@ -74,7 +80,8 @@ export async function strategyCounts(tx: Tx) {
 
 export async function getMapNotes(tx: Tx, mapId: string): Promise<MapNotes | null> {
   const rows = await tx<MapNotes[]>`
-    select overview, characteristics, important_areas, callouts, strengths, weaknesses, recommended_comps, callouts_image_url
+    select gameplan_attack, gameplan_defense, map_reading, overview, characteristics, important_areas, callouts,
+           strengths, weaknesses, recommended_comps, callouts_image_url
     from public.map_notes where map_id = ${mapId}`;
   return rows[0] ?? null;
 }

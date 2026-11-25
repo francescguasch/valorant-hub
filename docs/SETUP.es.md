@@ -91,6 +91,11 @@ sin cuenta, sin poder editar. Cámbialo en **Settings → Visitor access**.
 próximas 48 horas, sesiones sin resultados y revisiones de VOD abiertas más de una semana. Se van solas
 cuando el asunto queda resuelto.
 
+**Map Playbook:** cada mapa abre en **Gameplan**: el plan de ataque y de defensa, cómo lee el equipo el mapa, las
+pizarras del mapa y los puntos fuertes y débiles. Se edita con **Edit**. En las pestañas T side y CT side están las
+estrategias; cada una tiene su propia pizarra (arriba, en grande), su texto y sus puntos fuertes y débiles. Al crear
+una estrategia, guarda y pulsa **Draw the board**.
+
 **Pizarras tácticas:** en cada estrategia, mapa, rival, VOD, entrenamiento y partido hay un bloque **Tactics boards**.
 El staff pulsa **New board** y dibuja sobre el minimapa: agentes y habilidades (aliados o enemigos), flechas, trazos,
 zonas, texto, marcadores y pasos numerados. Al guardar se crea también la imagen, que los jugadores ven y pueden

@@ -15,6 +15,7 @@ One deployment serves one team: its own database, accounts, storage and URL.
 | 4 | Content-Security-Policy, notifications, automatic migrations, end-to-end tests, responsive review, deployment | **Done** |
 
 | 5 | Tactics boards (ValoPlant-style drawings on the map), self-service profiles | **Done** |
+| 7 | Map Playbook as the coach works: per map a gameplan (attack/defense) and how we read the map; each strategy with its own board, text, strong and weak points | **Done** |
 | 6 | Player pages become performance pages (matches played, filters, per-agent/per-map analysis, head-to-head radar); Player Development removed | **Done** |
 
 ### Player pages

@@ -62,6 +62,8 @@ export async function saveStrategy(_p: FormState, fd: FormData): Promise<FormSta
     timing: clip(fd.get("timing")),
     callouts: clip(fd.get("callouts")),
     execution: clip(fd.get("execution")),
+    strong_points: clip(fd.get("strong_points")),
+    weak_points: clip(fd.get("weak_points")),
     youtube_url: youtube,
   };
 
@@ -99,12 +101,17 @@ export async function duplicateStrategy(_p: FormState, fd: FormData): Promise<Fo
       const r = await tx<{ id: string }[]>`
         insert into public.strategies (map_id, side, category, name, description, objective, comp_agent_ids, assignments,
           starting_positions, utility_usage, timing, callouts, execution, alternatives, common_mistakes, coaching_notes,
-          youtube_url, status, created_by)
+          strong_points, weak_points, youtube_url, status, created_by)
         select map_id, side, category, left(name || ' (copy)', 80), description, objective, comp_agent_ids, assignments,
           starting_positions, utility_usage, timing, callouts, execution, alternatives, common_mistakes, coaching_notes,
-          youtube_url, 'in_development', ${me.userId}
+          strong_points, weak_points, youtube_url, 'in_development', ${me.userId}
         from public.strategies where id = ${id.data} returning id`;
       if (!r[0]) throw new Error("not-found");
+      // The copy gets its own copies of the strategy's boards.
+      await tx`
+        insert into public.boards (title, notes, map_id, side, scene, image_url, valoplant_url, strategy_id, created_by)
+        select title, notes, map_id, side, scene, image_url, valoplant_url, ${r[0].id}, ${me.userId}
+        from public.boards where strategy_id = ${id.data} order by created_at`;
       return r[0].id;
     });
   } catch (e) {
@@ -158,10 +165,9 @@ export async function saveMapNotes(_p: FormState, fd: FormData): Promise<FormSta
   if (img && !/^https?:\/\//.test(img)) return { error: null, fields: { callouts_image_url: "Upload an image or use a full https:// link." } };
   const row = {
     map_id: mapId.data,
-    overview: clip(fd.get("overview")),
-    characteristics: clip(fd.get("characteristics")),
-    important_areas: clip(fd.get("important_areas")),
-    callouts: clip(fd.get("callouts")),
+    gameplan_attack: clip(fd.get("gameplan_attack")),
+    gameplan_defense: clip(fd.get("gameplan_defense")),
+    map_reading: clip(fd.get("map_reading")),
     strengths: clip(fd.get("strengths")),
     weaknesses: clip(fd.get("weaknesses")),
     recommended_comps: clip(fd.get("recommended_comps")),
@@ -170,10 +176,10 @@ export async function saveMapNotes(_p: FormState, fd: FormData): Promise<FormSta
   try {
     await withActor(actorOf(me), (tx) => tx`
       insert into public.map_notes ${tx(row)}
-      on conflict (map_id) do update set overview = excluded.overview, characteristics = excluded.characteristics,
-        important_areas = excluded.important_areas, callouts = excluded.callouts, strengths = excluded.strengths,
-        weaknesses = excluded.weaknesses, recommended_comps = excluded.recommended_comps,
-        callouts_image_url = excluded.callouts_image_url`);
+      on conflict (map_id) do update set gameplan_attack = excluded.gameplan_attack,
+        gameplan_defense = excluded.gameplan_defense, map_reading = excluded.map_reading,
+        strengths = excluded.strengths, weaknesses = excluded.weaknesses,
+        recommended_comps = excluded.recommended_comps, callouts_image_url = excluded.callouts_image_url`);
   } catch (e) {
     return { error: friendlyDbError(e), fields: {} };
   }
