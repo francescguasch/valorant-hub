@@ -87,6 +87,10 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
                 question="This deletes their scoreboards, goals and feedback too. Mark them inactive instead to keep history."
               />
             </div>
+          ) : ownProfile ? (
+            <Link href="/settings/account#player" className={buttonClass("secondary")}>
+              <Pencil className="size-4" aria-hidden /> Edit my profile
+            </Link>
           ) : null}
         </div>
       </header>

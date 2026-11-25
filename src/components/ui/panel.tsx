@@ -8,7 +8,9 @@ export function Panel({
   children,
   className,
   bodyClassName,
+  id,
 }: {
+  id?: string;
   title?: string;
   description?: ReactNode;
   action?: ReactNode;
@@ -17,7 +19,7 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={clsx("min-w-0 border border-line bg-panel", className)}>
+    <section id={id} className={clsx("min-w-0 scroll-mt-6 border border-line bg-panel", className)}>
       {title ? (
         <header className="flex items-end justify-between gap-4 border-b border-line px-5 pb-3 pt-4">
           <div className="min-w-0">

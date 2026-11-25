@@ -28,6 +28,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
           displayName: viewer.displayName,
           roleLabel: ROLE_LABEL[viewer.role],
           notices,
+          avatarUrl: viewer.pictureUrl,
         }
       : null;
 

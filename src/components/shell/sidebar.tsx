@@ -10,6 +10,7 @@ export type ShellUser = {
   displayName: string;
   roleLabel: string;
   notices: number;
+  avatarUrl: string | null;
 } | null;
 
 export function TeamBlock({ settings }: { settings: TeamSettings }) {
@@ -58,9 +59,14 @@ export function UserBlock({ user }: { user: ShellUser }) {
   return (
     <div className="flex items-center gap-3 border-t border-line px-4 py-4">
       <Link href="/settings/account" className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-90">
-        <span className="grid size-9 shrink-0 place-items-center bg-raised font-display text-[14px] font-bold text-bone ring-1 ring-line-strong">
-          {initials}
-        </span>
+        {user.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatarUrl} alt="" className="size-9 shrink-0 rounded-full object-cover ring-1 ring-line-strong" />
+        ) : (
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-raised font-display text-[14px] font-bold text-bone ring-1 ring-line-strong">
+            {initials}
+          </span>
+        )}
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-[14px] font-semibold text-bone">{user.displayName}</span>
           <span className="block truncate text-[12.5px] text-fog">{user.roleLabel}</span>

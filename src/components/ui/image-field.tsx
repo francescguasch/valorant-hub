@@ -14,14 +14,19 @@ export function ImageField({
   name,
   initial,
   kind,
+  folder = "branding",
   resetTo,
   wide,
+  round,
   error,
 }: {
   label: string;
   name: string;
   initial: string;
   kind: string;
+  /** Storage folder. Staff upload anywhere; other members only into people/<their user id>. */
+  folder?: string;
+  round?: boolean;
   resetTo?: string;
   wide?: boolean;
   error?: string;
@@ -37,7 +42,7 @@ export function ImageField({
     if (file.size > MAX_BYTES) return setProblem("That image is over 8 MB. Use a smaller one.");
     setBusy(true);
     const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-    const path = `branding/${kind}-${Date.now()}.${ext}`;
+    const path = `${folder}/${kind}-${Date.now()}.${ext}`;
     const supabase = createSupabaseBrowser();
     const { error: upErr } = await supabase.storage.from("media").upload(path, file, { contentType: file.type, upsert: false });
     setBusy(false);
@@ -50,9 +55,21 @@ export function ImageField({
       <span className="text-[13px] font-medium text-fog">{label}</span>
       <input type="hidden" name={name} value={url} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className={wide ? "aspect-[16/9] w-full max-w-sm overflow-hidden border border-line bg-rail" : "grid size-24 place-items-center border border-line bg-rail"}>
+        <div
+          className={
+            wide
+              ? "aspect-[16/9] w-full max-w-sm overflow-hidden border border-line bg-rail"
+              : round
+                ? "grid size-24 place-items-center overflow-hidden rounded-full border border-line bg-rail"
+                : "grid size-24 place-items-center border border-line bg-rail"
+          }
+        >
           {url ? (
-            <img src={url} alt="" className={wide ? "size-full object-cover" : "max-h-20 max-w-20 object-contain"} />
+            <img
+              src={url}
+              alt=""
+              className={wide || round ? "size-full object-cover" : "max-h-20 max-w-20 object-contain"}
+            />
           ) : (
             <span className="text-[12px] text-dim">No image</span>
           )}

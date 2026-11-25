@@ -29,7 +29,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
         title="Settings"
         description={
           me.role === "player"
-            ? "Your name and password."
+            ? "Your name, photo, player profile and password."
             : "Team identity, members, maps and rotation, agents, roles, opponents and data. Players are managed in the Roster."
         }
       />

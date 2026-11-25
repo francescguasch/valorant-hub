@@ -121,11 +121,43 @@ describe.skipIf(!url)("row level security", () => {
 
   it("stops players from editing team data or their own role", async () => {
     await rejects(withActor(as(ids.zach), (tx) => tx`insert into public.opponents (name) values ('SECTEST player')`), "42501");
-    const updated = await withActor(as(ids.zach), (tx) => tx`update public.players set nickname = 'hacked' where id = ${zachPlayer} returning id`);
-    expect(updated).toHaveLength(0);
+    const other = await withActor(as(ids.zach), (tx) => tx`update public.players set nickname = 'hacked' where id = ${strykerPlayer} returning id`);
+    expect(other).toHaveLength(0);
     await rejects(withActor(as(ids.zach), (tx) => tx`update public.profiles set role = 'owner' where id = ${ids.zach}`), "42501");
     const renamed = await withActor(as(ids.zach), (tx) => tx`update public.profiles set display_name = 'Zach' where id = ${ids.zach} returning id`);
     expect(renamed).toHaveLength(1);
+  });
+
+  it("lets a player edit their own roster profile, within limits", async () => {
+    const own = await withActor(as(ids.zach), (tx) => tx`
+      update public.players set nickname = 'SECTEST A2', photo_url = 'https://example.test/a.png' where id = ${zachPlayer} returning id`);
+    expect(own).toHaveLength(1);
+    const [role] = await asSystem((tx) => tx<{ id: string }[]>`select id from public.team_roles limit 1`);
+    await rejects(withActor(as(ids.zach), (tx) => tx`update public.players set main_role_id = ${role!.id} where id = ${zachPlayer}`), "42501");
+    await rejects(withActor(as(ids.zach), (tx) => tx`update public.players set active = false where id = ${zachPlayer}`), "42501");
+    await withActor(as(ids.zach), (tx) => tx`insert into public.player_details (player_id, real_name) values (${zachPlayer}, 'Zach Real')
+      on conflict (player_id) do update set real_name = excluded.real_name`);
+    await rejects(
+      withActor(as(ids.zach), (tx) => tx`update public.player_details set strengths = 'I am the best' where player_id = ${zachPlayer}`),
+      "42501",
+    );
+    const details = await withActor(as(ids.zach), (tx) => tx`
+      update public.player_details set real_name = 'x' where player_id = ${strykerPlayer} returning player_id`);
+    expect(details).toHaveLength(0);
+    // Staff still edit everything.
+    await withActor(as(ids.coach), (tx) => tx`update public.player_details set strengths = 'SECTEST' where player_id = ${zachPlayer}`);
+    await withActor(as(ids.coach), (tx) => tx`update public.players set nickname = 'SECTEST A' where id = ${zachPlayer}`);
+  });
+
+  it("lets members upload photos only into their own folder", async () => {
+    await withActor(as(ids.zach), (tx) => tx`
+      insert into storage.objects (bucket_id, name) values ('media', ${`people/${ids.zach}/avatar-1.png`})`);
+    await rejects(
+      withActor(as(ids.zach), (tx) => tx`insert into storage.objects (bucket_id, name) values ('media', ${`people/${ids.stryker}/x.png`})`),
+      "42501",
+    );
+    await rejects(withActor(as(ids.zach), (tx) => tx`insert into storage.objects (bucket_id, name) values ('media', 'branding/x.png')`), "42501");
+    await asSystem((tx) => tx`delete from storage.objects where name like 'people/%'`);
   });
 
   it("treats blocked accounts as outsiders", async () => {

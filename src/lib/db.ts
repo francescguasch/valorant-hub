@@ -43,10 +43,11 @@ export function db(): postgres.Sql {
 /** Resolves once pending migrations are applied (first call per server instance). */
 function ready(): Promise<unknown> {
   if (!globalThis.__hubReady) {
+    // A failed migration must not take the whole hub down: log it, keep serving,
+    // and try again a minute later.
     globalThis.__hubReady = applyPendingMigrations(db()).catch((e) => {
-      globalThis.__hubReady = undefined; // retry on the next request
       console.error("[migrate] failed", e);
-      throw e;
+      setTimeout(() => (globalThis.__hubReady = undefined), 60_000);
     });
   }
   return globalThis.__hubReady;

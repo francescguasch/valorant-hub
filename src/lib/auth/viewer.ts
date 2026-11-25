@@ -16,6 +16,8 @@ export type Member = {
   displayName: string;
   playerId: string | null;
   avatarUrl: string | null;
+  /** Profile photo, or the linked roster photo when there is none. */
+  pictureUrl: string | null;
 };
 export type Visitor = { kind: "visitor"; reason: "signed-out" | "no-access" };
 export type Viewer = Member | Visitor;
@@ -29,8 +31,17 @@ export const getViewer = cache(async (): Promise<Viewer> => {
   const email = (data.claims.email as string | undefined) ?? null;
 
   const rows = await withActor({ userId: sub, email }, (tx) => tx<
-    { email: string; display_name: string; role: Role; player_id: string | null; avatar_url: string | null; disabled: boolean }[]
-  >`select email, display_name, role, player_id, avatar_url, disabled from public.profiles where id = ${sub}`);
+    {
+      email: string;
+      display_name: string;
+      role: Role;
+      player_id: string | null;
+      avatar_url: string | null;
+      player_photo: string | null;
+      disabled: boolean;
+    }[]
+  >`select pr.email, pr.display_name, pr.role, pr.player_id, pr.avatar_url, pl.photo_url as player_photo, pr.disabled
+    from public.profiles pr left join public.players pl on pl.id = pr.player_id where pr.id = ${sub}`);
   const p = rows[0];
   if (!p || p.disabled) return { kind: "visitor", reason: "no-access" };
 
@@ -42,6 +53,7 @@ export const getViewer = cache(async (): Promise<Viewer> => {
     displayName: p.display_name,
     playerId: p.player_id,
     avatarUrl: p.avatar_url,
+    pictureUrl: p.avatar_url ?? p.player_photo,
   };
 });
 
