@@ -11,10 +11,21 @@ One deployment serves one team: its own database, accounts, storage and URL.
 |---|---|---|
 | 1 | Design system, campus hero, auth (invitation codes, reset codes), roles, navigation, Overview dashboard, Settings (branding, members, visitor access, demo data) | **Done** |
 | 2 | Map Playbook, Match Center, Opponent Scouting, Team Analytics, CSV/XLSX export | **Done** |
-| 3 | Roster, Player Development (feedback, goals with history, weekly evolution), VOD Review, Practice Planner | **Done** |
+| 3 | Roster, VOD Review, Practice Planner (and Player Development, later removed) | **Done** |
 | 4 | Content-Security-Policy, notifications, automatic migrations, end-to-end tests, responsive review, deployment | **Done** |
 
 | 5 | Tactics boards (ValoPlant-style drawings on the map), self-service profiles | **Done** |
+| 6 | Player pages become performance pages (matches played, filters, per-agent/per-map analysis, head-to-head radar); Player Development removed | **Done** |
+
+### Player pages
+
+`/roster/<player>` lists every map the player has a scoreboard line in, switchable between all matches, practice
+(scrims) and officials (official + tournament), filterable by map and agent. It breaks performance down by agent, by
+map and agent × map (ACS, win rate, K/D, kills per round, ADR), and compares any two picks (map + agent) side by side
+with a radar on fixed scales (350 ACS, 2.0 K/D, 1.2 KPR, 100% wins). The numbers come from `src/lib/stats/player.ts`.
+
+Player Development (feedback, goals, team objectives) was removed at the team's request: its pages redirect to the
+roster and nothing shows it, but the tables and any stored rows remain in the database.
 
 ### Tactics boards
 
@@ -52,13 +63,12 @@ cookies and image uploads.
   only). Only a SHA-256 hash of each code is stored.
 - **Roles:** `owner`, `coach`, `player`, enforced in the database by RLS policies and triggers
   (`supabase/migrations/20261124000200_security.sql`), and checked again in every server action.
-- **Private feedback** is readable only by the staff and the player it belongs to.
 - **Self-service:** every member edits their own name and photo; a linked player edits their own roster profile
   (nickname, photo, real name, agent pool) but not their team role or the staff's notes. Members upload only into
   `media/people/<their id>/`.
 - **Coach notes** on matches are staff-only.
 - **Visitor (read-only) mode:** the owner chooses which sections anyone with the link may view. Playbook, scouting
-  and VOD review start private. Player Development and Settings can never be public. Visitors can't write anything.
+  and VOD review start private. Settings can never be public. Visitors can't write anything.
 - **Password resets** use one-time codes created by the owner or a coach (no email service needed).
 - The first owner uses the one-time code printed at the end of `supabase/setup.sql` (valid 2 days; run
   `select app.create_owner_invitation();` in the SQL editor for a new one while there is no owner). Alternatively,
@@ -113,7 +123,7 @@ TEST_DATABASE_URL=postgres://... npm test    # + database security tests
 ```
 
 The flows were also checked end to end in Chrome (Playwright) on a fresh database: sign-in, invitations, resets,
-visitor mode, matches, playbook, development, VOD, practice, exports and mobile layouts.
+visitor mode, matches, playbook, tactics boards, player pages, VOD, practice, exports and mobile layouts.
 
 The security tests need a throwaway Postgres with Supabase's roles: run `supabase/tests/supabase_stub.sql` and then
 the migrations on it (CI does this automatically). **Never point `TEST_DATABASE_URL` at the real project.**

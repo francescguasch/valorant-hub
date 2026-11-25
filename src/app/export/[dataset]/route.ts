@@ -75,15 +75,6 @@ const DATASETS: Record<string, (tx: Tx, sp: URLSearchParams) => Promise<Table>> 
              s.utility_usage, s.timing, s.callouts, s.execution, s.alternatives, s.common_mistakes, s.coaching_notes,
              s.youtube_url, s.archived_at is not null as archived, s.updated_at::date as updated
       from public.strategies s join public.maps mp on mp.id = s.map_id order by mp.name, s.side, s.category, s.name`),
-  feedback: (tx) =>
-    query(tx, "Feedback", `
-      select f.given_on as date, p.nickname as player, f.category, f.status, f.strengths, f.areas_to_improve,
-             f.specific_example, f.evidence, f.vod_clip_url, f.improvement_action, f.follow_up_on
-      from public.feedback f join public.players p on p.id = f.player_id order by f.given_on desc`),
-  goals: (tx) =>
-    query(tx, "Goals", `
-      select p.nickname as player, g.description, g.current_level, g.target, g.deadline, g.progress, g.status, g.comments
-      from public.player_goals g join public.players p on p.id = g.player_id order by p.nickname, g.deadline nulls last`),
   practice: (tx) =>
     query(tx, "Practice", `
       select s.starts_at, s.duration_min, s.session_type, mp.name as map, st.name as strategy, s.objective, s.status,

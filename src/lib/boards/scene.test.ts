@@ -137,3 +137,24 @@ describe("rotation", () => {
     expect(s.items[0]).toMatchObject({ r: 0, s: 1 });
   });
 });
+
+import { effectiveReach } from "./abilities";
+
+describe("ability sizes follow the game", () => {
+  it("keeps fixed abilities at their in-game size", () => {
+    const lockdown = ABILITY_AREAS["lockdown"]!;
+    expect(effectiveReach(lockdown, 4)).toBe(1);
+    const big = abilityArea({ ...abilityFixture(), reach: 4 }, lockdown, 6.7);
+    expect(big.circles[0]!.r).toBeCloseTo(32.5 * 6.7);
+  });
+  it("lets variable abilities change within the game's limits", () => {
+    const fault = ABILITY_AREAS["fault line"]!;
+    expect(effectiveReach(fault, 10) * 26).toBeCloseTo(46);
+    expect(effectiveReach(fault, 0.1) * 26).toBeCloseTo(9);
+    expect(effectiveReach(fault, 0.5) * 26).toBeCloseTo(13);
+  });
+});
+
+function abilityFixture() {
+  return { id: "k", t: "ability", agent: "Killjoy", slot: "Ultimate", x: 500, y: 500, team: "enemy", s: 1, r: 0, area: true, dir: 0, reach: 1 } as const;
+}

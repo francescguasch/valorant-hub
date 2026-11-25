@@ -55,7 +55,15 @@ import {
   type Scene,
   type Team,
 } from "@/lib/boards/scene";
-import { areaFor, baseReach, DEFAULT_SCALE, isDirectional, type AreaSpec } from "@/lib/boards/abilities";
+import {
+  areaFor,
+  baseReach,
+  DEFAULT_SCALE,
+  effectiveReach,
+  isDirectional,
+  primaryMetres,
+  type AreaSpec,
+} from "@/lib/boards/abilities";
 import { saveBoard } from "@/app/(hub)/boards/actions";
 import { SceneSvg, slotKey } from "./scene-svg";
 
@@ -423,12 +431,11 @@ export function BoardEditor({
           const dist = Math.hypot(dx, dy);
           if (dist < 6) return i;
           d.moved = true;
-          const reach = Math.min(4, Math.max(0.2, dist / baseReach(spec, scale)));
           const dir = Math.round((Math.atan2(dy, dx) * 180) / Math.PI);
-          // A fresh placement only aims; the handle also resizes.
-          return isDirectional(spec) && !d.history
-            ? { ...i, dir }
-            : { ...i, dir, reach: Math.round(reach * 100) / 100 };
+          // Only abilities whose size varies in game can be stretched, and only within the game's limits.
+          if (!spec.adjust || !d.history) return { ...i, dir };
+          const reach = effectiveReach(spec, dist / baseReach(spec, scale));
+          return { ...i, dir, reach: Math.round(reach * 100) / 100 };
         }),
       }));
       return;
@@ -1373,22 +1380,34 @@ function SelectionPanel({
                   />
                 </label>
               ) : null}
-              <label className="flex items-center gap-3 text-[14px] text-fog">
-                {directional ? "Length" : "Size"}
-                <input
-                  type="range"
-                  min={0.2}
-                  max={3}
-                  step={0.05}
-                  value={item.reach}
-                  onChange={(e) => onChange({ reach: Number(e.target.value) })}
-                  className="flex-1 accent-[var(--color-accent)]"
-                />
-              </label>
-              <p className="text-[12.5px] text-dim">
-                Drag the white handle on the map to {directional ? "aim and stretch" : "resize"} it. Sizes follow the
-                game roughly.
-              </p>
+              {spec.adjust ? (
+                <label className="flex items-center gap-3 text-[14px] text-fog">
+                  {spec.kind === "circle" ? "Radius" : "Length"}
+                  <input
+                    type="range"
+                    min={spec.adjust[0]}
+                    max={spec.adjust[1]}
+                    step={0.5}
+                    value={Math.round(primaryMetres(spec) * effectiveReach(spec, item.reach) * 2) / 2}
+                    onChange={(e) => onChange({ reach: Number(e.target.value) / primaryMetres(spec) })}
+                    className="flex-1 accent-[var(--color-accent)]"
+                  />
+                  <span className="num w-12 text-right text-bone">
+                    {Math.round(primaryMetres(spec) * effectiveReach(spec, item.reach))} m
+                  </span>
+                </label>
+              ) : (
+                <p className="text-[13px] text-fog">
+                  In-game size: {primaryMetres(spec)} m{" "}
+                  {spec.kind === "circle" ? "radius" : spec.kind === "cone" ? "range" : "long"}.
+                </p>
+              )}
+              {directional || spec.adjust ? (
+                <p className="text-[12.5px] text-dim">
+                  Drag the white handle on the map to {directional ? "aim" : "resize"} it
+                  {directional && spec.adjust ? " and set its length" : ""}.
+                </p>
+              ) : null}
             </>
           ) : null}
         </div>

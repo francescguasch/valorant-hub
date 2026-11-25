@@ -46,6 +46,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Player Development was removed; old links land on the roster.
+  async redirects() {
+    return [
+      { source: "/development", destination: "/roster", permanent: false },
+      { source: "/development/:path*", destination: "/roster", permanent: false },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

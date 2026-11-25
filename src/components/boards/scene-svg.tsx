@@ -411,7 +411,8 @@ function AreaHandle({
 }) {
   if (item.t !== "ability" || !item.area) return null;
   const spec = areaFor(icon.get(item.agent.toLowerCase()), item.slot);
-  if (!spec) return null;
+  // Fixed-size circles (smokes, mollies, ultimates) have nothing to aim or stretch.
+  if (!spec || (spec.kind === "circle" && !spec.adjust)) return null;
   const [hx, hy] = abilityArea(item, spec, scale).handle;
   return (
     <g>

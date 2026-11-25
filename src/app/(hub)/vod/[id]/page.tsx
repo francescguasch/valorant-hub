@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
-import { actorOf, isStaff, sectionAccess } from "@/lib/auth/viewer";
+import { actorOf, sectionAccess } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
 import { boardsFor } from "@/lib/data/boards";
 import { BoardStrip } from "@/components/boards/board-strip";
@@ -70,7 +70,7 @@ export default async function VodDetailPage({ params, searchParams }: { params: 
         ) : null}
       </header>
       <PageBody>
-        {sp.saved ? <FormNotice>Review saved.{sp.task ? " An improvement task was added to Player Development." : ""}</FormNotice> : null}
+        {sp.saved ? <FormNotice>Review saved.</FormNotice> : null}
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           <Panel title="Video" description={r.video_timestamp ? `Timestamp ${r.video_timestamp}` : undefined}>
             {video ? <VideoBlock url={video} title="VOD review clip" /> : <p className="text-dim">No clip or match VOD linked.</p>}
@@ -99,12 +99,6 @@ export default async function VodDetailPage({ params, searchParams }: { params: 
                       Open the match
                     </Link>
                   </dd>
-                </div>
-              ) : null}
-              {r.feedback_id && (isStaff(viewer) || (viewer.kind === "member" && viewer.playerId === r.assigned_player_id)) ? (
-                <div>
-                  <dt className="text-[13px] text-fog">Improvement task</dt>
-                  <dd className="text-bone">Created in Player Development.</dd>
                 </div>
               ) : null}
             </dl>

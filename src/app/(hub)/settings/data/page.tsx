@@ -65,8 +65,6 @@ export default async function DataPage() {
             ["player-stats", "Player stats"],
             ["opponents", "Opponents"],
             ["strategies", "Strategies"],
-            ["feedback", "Feedback"],
-            ["goals", "Goals"],
             ["practice", "Practice"],
             ["vod", "VOD reviews"],
           ].map(([key, label]) => (

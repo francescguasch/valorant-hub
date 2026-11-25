@@ -8,13 +8,21 @@ import type { BoardAgent, ItemOf } from "./scene";
  * names like "Nebula / Dissipate" the part before the slash is used.
  */
 export type AreaStyle = "smoke" | "zone" | "wall" | "reveal";
-export type AreaSpec =
+export type AreaSpec = (
   | { kind: "circle"; r: number; style: AreaStyle }
   | { kind: "wall"; length: number; width: number; from: "center" | "origin"; style: AreaStyle }
   | { kind: "rect"; length: number; width: number; style: AreaStyle }
   | { kind: "cone"; range: number; angle: number; style: AreaStyle }
   | { kind: "lane"; length: number; gap: number; style: AreaStyle }
-  | { kind: "cross"; length: number; style: AreaStyle };
+  | { kind: "cross"; length: number; style: AreaStyle }
+) & {
+  /**
+   * Metres the length (or radius) can take in game, for abilities whose size
+   * depends on how they're used (Fault Line, trapwire, High Tide…). Without it
+   * the size is fixed: the board always draws the in-game size.
+   */
+  adjust?: [number, number];
+};
 
 const circle = (r: number, style: AreaStyle = "zone"): AreaSpec => ({ kind: "circle", r, style });
 const smoke = (r: number): AreaSpec => ({ kind: "circle", r, style: "smoke" });
@@ -27,6 +35,7 @@ const wall = (length: number, width: number, from: "center" | "origin"): AreaSpe
   style: "wall",
 });
 const rect = (length: number, width: number): AreaSpec => ({ kind: "rect", length, width, style: "zone" });
+const adjustable = (spec: AreaSpec, min: number, max: number): AreaSpec => ({ ...spec, adjust: [min, max] });
 const cone = (range: number, angle: number, style: AreaStyle = "reveal"): AreaSpec => ({
   kind: "cone",
   range,
@@ -39,11 +48,11 @@ export const ABILITY_AREAS: Record<string, AreaSpec> = {
   "gravity well": circle(4.75),
   "nova pulse": circle(4.75),
   nebula: smoke(4.75),
-  "cosmic divide": wall(120, 1.2, "center"),
-  "astral form": wall(120, 1.2, "center"),
+  "cosmic divide": adjustable(wall(120, 1.2, "center"), 20, 160),
+  "astral form": adjustable(wall(120, 1.2, "center"), 20, 160),
   // Breach
   aftershock: circle(3),
-  "fault line": rect(26, 8),
+  "fault line": adjustable(rect(26, 8), 9, 46),
   "rolling thunder": cone(32, 60, "zone"),
   // Brimstone
   "stim beacon": circle(6),
@@ -57,7 +66,7 @@ export const ABILITY_AREAS: Record<string, AreaSpec> = {
   meddle: circle(6),
   ruse: smoke(4),
   // Cypher
-  trapwire: wall(12, 0.4, "center"),
+  trapwire: adjustable(wall(12, 0.4, "center"), 2, 15),
   "cyber cage": smoke(3.7),
   spycam: cone(30, 90),
   // Deadlock
@@ -76,7 +85,7 @@ export const ABILITY_AREAS: Record<string, AreaSpec> = {
   cascade: wall(12, 1.5, "center"),
   "storm surge": circle(6),
   cove: smoke(4.5),
-  "high tide": wall(50, 1, "origin"),
+  "high tide": adjustable(wall(50, 1, "origin"), 8, 50),
   reckoning: rect(30, 15),
   // Iso
   contingency: wall(6, 1, "center"),
@@ -94,7 +103,7 @@ export const ABILITY_AREAS: Record<string, AreaSpec> = {
   turret: cone(40, 100),
   lockdown: reveal(32.5),
   // Neon
-  "fast lane": { kind: "lane", length: 50, gap: 5, style: "wall" },
+  "fast lane": adjustable({ kind: "lane", length: 50, gap: 5, style: "wall" }, 8, 50),
   "relay bolt": circle(5),
   // Omen
   paranoia: rect(30, 4),
@@ -157,6 +166,26 @@ export type AreaShape = {
   handle: Pt;
 };
 
+/** The in-game length or radius in metres that the handle controls. */
+export function primaryMetres(spec: AreaSpec): number {
+  switch (spec.kind) {
+    case "circle":
+      return spec.r;
+    case "cone":
+      return spec.range;
+    default:
+      return spec.length;
+  }
+}
+
+/** The size multiplier actually drawn: 1 for fixed abilities, otherwise kept within the game's limits. */
+export function effectiveReach(spec: AreaSpec, reach: number): number {
+  if (!spec.adjust) return 1;
+  const base = primaryMetres(spec);
+  const metres = Math.min(spec.adjust[1], Math.max(spec.adjust[0], base * reach));
+  return metres / base;
+}
+
 /** Length (board units) that "reach = 1" corresponds to, measured from the ability to its handle. */
 export function baseReach(spec: AreaSpec, scale: number): number {
   switch (spec.kind) {
@@ -176,7 +205,7 @@ export function baseReach(spec: AreaSpec, scale: number): number {
 /** Polygons and circles for an ability's area, in board units around the ability's position. */
 export function abilityArea(item: ItemOf<"ability">, spec: AreaSpec, scale: number): AreaShape {
   const { x, y } = item;
-  const k = scale * item.reach;
+  const k = scale * effectiveReach(spec, item.reach);
   const rad = (item.dir * Math.PI) / 180;
   const ux = Math.cos(rad);
   const uy = Math.sin(rad);
@@ -215,7 +244,7 @@ export function abilityArea(item: ItemOf<"ability">, spec: AreaSpec, scale: numb
       const len = spec.length * k;
       return {
         circles: [],
-        polys: [band(x, y, len, Math.max(4, spec.width * scale * Math.min(item.reach, 1.5)))],
+        polys: [band(x, y, len, Math.max(4, spec.width * scale))],
         style: spec.style,
         handle: [x + ux * len, y + uy * len],
       };

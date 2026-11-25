@@ -1,9 +1,9 @@
 import "server-only";
 import type { Tx } from "@/lib/db";
-import { developmentOptions } from "../development/options";
+import { developmentOptions as baseOptions } from "./options";
 
 export async function vodOptions(tx: Tx) {
-  const o = await developmentOptions(tx);
+  const o = await baseOptions(tx);
   return {
     catalog: o.catalog,
     matches: o.matches,

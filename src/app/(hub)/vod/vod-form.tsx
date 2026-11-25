@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckboxField, FormAlert, FormSection, SelectField, SubmitButton, TextAreaField, TextField } from "@/components/ui/form";
+import { FormAlert, FormSection, SelectField, SubmitButton, TextAreaField, TextField } from "@/components/ui/form";
 import { useForm } from "@/lib/use-form";
 import { FEEDBACK_STATUS, SKILL_CATEGORIES } from "@/lib/constants";
 import { saveVod } from "./actions";
@@ -21,7 +21,6 @@ export type VodInitial = {
   improvement_action: string;
   assigned_player_id: string;
   status: string;
-  hasTask: boolean;
 };
 
 export function VodForm({ initial, matches, maps, players }: { initial: VodInitial; matches: Opt[]; maps: Opt[]; players: Opt[] }) {
@@ -51,17 +50,6 @@ export function VodForm({ initial, matches, maps, players }: { initial: VodIniti
           <SelectField label="Assigned to" name="assigned_player_id" defaultValue={g("assigned_player_id")} options={[{ value: "", label: "Nobody yet" }, ...players]} error={state.fields.assigned_player_id} />
           <SelectField label="Status" name="status" defaultValue={g("status")} options={FEEDBACK_STATUS.map((s) => ({ value: s.value, label: s.label }))} />
         </div>
-        {!initial.hasTask ? (
-          <CheckboxField
-            className="mt-5"
-            name="create_task"
-            label="Create an improvement task"
-            hint="Adds private feedback for the assigned player (or the player involved) in Player Development."
-            defaultChecked={v?.create_task === "on"}
-          />
-        ) : (
-          <p className="mt-5 text-[13.5px] text-fog">An improvement task was already created from this review.</p>
-        )}
       </FormSection>
       <div className="border-t border-line pt-6">
         <SubmitButton pendingLabel="Saving…">{initial.id ? "Save review" : "Add review"}</SubmitButton>

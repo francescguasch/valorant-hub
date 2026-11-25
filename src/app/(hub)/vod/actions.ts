@@ -30,13 +30,9 @@ export async function saveVod(_p: FormState, fd: FormData): Promise<FormState> {
   if (clipUrl && !/^https?:\/\//.test(clipUrl)) fields.clip_url = "Use a full link starting with https://";
   const status = String(fd.get("status") ?? "open");
   if (!["open", "in_progress", "resolved"].includes(status)) fields.status = "Pick a status.";
-  const createTask = fd.get("create_task") === "on";
   const assigned = optUuid(fd.get("assigned_player_id"));
   const involved = optUuid(fd.get("player_id"));
   const improvement = clip(fd.get("improvement_action"));
-  if (createTask && !(assigned ?? involved)) fields.assigned_player_id = "Pick who the improvement task is for.";
-  if (createTask && !improvement) fields.improvement_action = "Write the improvement action for the task.";
-  if (createTask && !category) fields.category = "Pick a category for the task.";
   if (Object.keys(fields).length) return { error: "Check the highlighted fields.", fields };
 
   const row = {
@@ -64,22 +60,6 @@ export async function saveVod(_p: FormState, fd: FormData): Promise<FormState> {
         ? (await tx<{ id: string }[]>`update public.vod_reviews set ${tx(row)} where id = ${id} returning id`)[0]?.id
         : (await tx<{ id: string }[]>`insert into public.vod_reviews ${tx({ ...row, created_by: me.userId })} returning id`)[0]!.id;
       if (!vid) throw new Error("not-found");
-      if (createTask) {
-        const [fb] = await tx<{ id: string }[]>`
-          insert into public.feedback ${tx({
-            player_id: assigned ?? involved,
-            category: category!,
-            areas_to_improve: what,
-            specific_example: row.should_have_happened,
-            improvement_action: improvement,
-            vod_clip_url: clipUrl,
-            match_id: row.match_id,
-            evidence: [row.round_number ? `Round ${row.round_number}` : null, ts ? `at ${ts}` : null].filter(Boolean).join(" ") || null,
-            status: "open",
-            created_by: me.userId,
-          })} returning id`;
-        await tx`update public.vod_reviews set feedback_id = ${fb!.id} where id = ${vid}`;
-      }
       return vid;
     });
   } catch (e) {
@@ -87,7 +67,7 @@ export async function saveVod(_p: FormState, fd: FormData): Promise<FormState> {
     return { error: friendlyDbError(e), fields: {} };
   }
   revalidatePath("/", "layout");
-  redirect(`/vod/${savedId}?saved=1${createTask ? "&task=1" : ""}`);
+  redirect(`/vod/${savedId}?saved=1`);
 }
 
 export async function deleteVod(_p: FormState, fd: FormData): Promise<FormState> {

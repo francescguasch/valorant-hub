@@ -27,7 +27,7 @@ export function AccessForm({ enabled, selected, sections }: { enabled: boolean; 
           <span className="block font-semibold text-bone">Let visitors without an account view the hub</span>
           <span className="mt-1 block text-[14px] text-fog">
             Anyone with the link sees the sections below in read-only mode. They can never add, edit or delete anything.
-            Player Development, private feedback, coach notes, member emails and Settings are never shown to visitors.
+            Private feedback, coach notes, member emails and Settings are never shown to visitors.
           </span>
         </span>
       </label>

@@ -3,7 +3,7 @@ import type { Tx } from "@/lib/db";
 import { loadCatalog } from "@/lib/data/catalog";
 import { formatDay } from "@/lib/format";
 
-/** Choices for the development forms: players, recent matches and recent practice sessions. */
+/** Choices for the VOD review form: players, recent matches and recent practice sessions. */
 export async function developmentOptions(tx: Tx, includePlayer?: string) {
   const catalog = await loadCatalog(tx);
   const matches = await tx<{ id: string; played_on: string; map_id: string; opponent_id: string; our_score: number; opp_score: number }[]>`

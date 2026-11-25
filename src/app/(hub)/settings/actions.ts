@@ -252,11 +252,16 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
       },
     };
   }
-  await withActor(
-    actorOf(v),
-    (tx) =>
-      tx`update public.profiles set display_name = ${parsed.data.display_name}, avatar_url = ${avatar.value} where id = ${v.userId}`,
-  );
+  const playerId = v.playerId;
+  try {
+    await withActor(actorOf(v), async (tx) => {
+      await tx`update public.profiles set display_name = ${parsed.data.display_name}, avatar_url = ${avatar.value} where id = ${v.userId}`;
+      // Linked players have one photo: it is also their roster photo.
+      if (playerId) await tx`update public.players set photo_url = ${avatar.value} where id = ${playerId}`;
+    });
+  } catch (e) {
+    return { error: friendlyDbError(e), fields: {} };
+  }
   revalidatePath("/", "layout");
   return { error: null, fields: {}, success: "Profile saved." };
 }
@@ -267,15 +272,13 @@ const uuidList = (formData: FormData, key: string) =>
     .map(String)
     .filter((x) => z.string().uuid().safeParse(x).success);
 
-/** A player edits their own roster profile: nickname, photo, real name and agent pool. */
+/** A player edits their own roster profile: nickname, real name and agent pool (the photo is the profile photo). */
 export async function updateMyPlayer(_prev: FormState, formData: FormData): Promise<FormState> {
   const v = await getViewer();
   if (v.kind !== "member" || !v.playerId) return denied;
   const fields: Record<string, string> = {};
   const nickname = String(formData.get("nickname") ?? "").trim().slice(0, 30);
   if (nickname.length < 2) fields.nickname = "Enter your nickname.";
-  const photo = photoUrl(formData.get("photo_url"));
-  if (!photo.ok) fields.photo_url = "Upload a photo.";
   if (Object.keys(fields).length) return { error: "Check the highlighted fields.", fields };
   const realName = String(formData.get("real_name") ?? "").trim().slice(0, 80) || null;
   const main = uuidList(formData, "main_agent");
@@ -283,7 +286,7 @@ export async function updateMyPlayer(_prev: FormState, formData: FormData): Prom
   const playerId = v.playerId;
   try {
     await withActor(actorOf(v), async (tx) => {
-      await tx`update public.players set nickname = ${nickname}, photo_url = ${photo.value},
+      await tx`update public.players set nickname = ${nickname},
                  main_agent_ids = ${main}, secondary_agent_ids = ${secondary}
                where id = ${playerId}`;
       await tx`insert into public.player_details (player_id, real_name) values (${playerId}, ${realName})

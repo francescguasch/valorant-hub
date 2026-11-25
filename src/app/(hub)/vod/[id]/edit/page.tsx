@@ -24,7 +24,7 @@ export default async function EditVodPage({ params }: { params: Promise<{ id: st
           matches={o.matches}
           maps={o.maps}
           players={o.players}
-          initial={{ id: r.id, match_id: s(r.match_id), map_id: s(r.map_id), round_number: s(r.round_number), video_timestamp: s(r.video_timestamp), clip_url: s(r.clip_url), player_id: s(r.player_id), category: s(r.category), what_happened: r.what_happened, should_have_happened: s(r.should_have_happened), improvement_action: s(r.improvement_action), assigned_player_id: s(r.assigned_player_id), status: r.status, hasTask: Boolean(r.feedback_id) }}
+          initial={{ id: r.id, match_id: s(r.match_id), map_id: s(r.map_id), round_number: s(r.round_number), video_timestamp: s(r.video_timestamp), clip_url: s(r.clip_url), player_id: s(r.player_id), category: s(r.category), what_happened: r.what_happened, should_have_happened: s(r.should_have_happened), improvement_action: s(r.improvement_action), assigned_player_id: s(r.assigned_player_id), status: r.status }}
         />
       </PageBody>
     </>

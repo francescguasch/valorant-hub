@@ -11,7 +11,6 @@ import {
   Compositions,
   MapPerformance,
   RecentMatches,
-  TeamDevelopment,
   UpcomingPractice,
 } from "@/components/overview/sections";
 import { EmptyState, Panel } from "@/components/ui/panel";
@@ -108,13 +107,8 @@ export default async function OverviewPage() {
         )}
 
         {isMember || data.practiceVisible ? (
-          <div className={isMember ? "xl:col-span-4" : "xl:col-span-12"}>
+          <div className="xl:col-span-12">
             <UpcomingPractice data={data} timezone={settings.timezone} canEdit={canEdit} />
-          </div>
-        ) : null}
-        {isMember ? (
-          <div className="xl:col-span-8">
-            <TeamDevelopment data={data} canEdit={canEdit} isPlayer={viewer.role === "player"} />
           </div>
         ) : null}
       </div>

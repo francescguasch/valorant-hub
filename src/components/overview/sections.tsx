@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-import clsx from "clsx";
 import { CalendarDays, Plus } from "lucide-react";
 import type { OverviewData } from "@/lib/data/overview";
 import {
@@ -234,84 +233,3 @@ export function UpcomingPractice({ data, timezone, canEdit }: { data: OverviewDa
   );
 }
 
-const FEEDBACK_STATUS = { open: "Open", in_progress: "In progress", resolved: "Resolved" } as Record<string, string>;
-
-export function TeamDevelopment({ data, canEdit, isPlayer }: { data: OverviewData; canEdit: boolean; isPlayer: boolean }) {
-  const objectives = data.objectives.filter((o) => o.kind === "objective");
-  const priorities = data.objectives.filter((o) => o.kind === "priority");
-  return (
-    <Panel
-      title="Team development"
-      action={
-        <Link href="/development" className="text-[13px] text-fog hover:text-bone">
-          Player development
-        </Link>
-      }
-    >
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
-        <div className="flex flex-col gap-6">
-          <div>
-            <h3 className="mb-3 text-[13px] font-semibold text-fog">Current objectives</h3>
-            {objectives.length === 0 ? (
-              <p className="text-[14px] text-dim">No objectives yet.{canEdit ? " Add them in Player Development." : ""}</p>
-            ) : (
-              <ul className="flex flex-col gap-3.5">
-                {objectives.map((o) => (
-                  <li key={o.id}>
-                    <div className="mb-1.5 flex items-baseline justify-between gap-3">
-                      <span className="text-[14.5px] text-bone">
-                        {o.title} {o.is_demo ? <DemoBadge className="ml-1 align-middle" /> : null}
-                      </span>
-                      <span className="num text-[16px] font-semibold text-bone">{o.progress}%</span>
-                    </div>
-                    <span className="relative block h-1.5 bg-line" role="progressbar" aria-valuenow={o.progress} aria-valuemin={0} aria-valuemax={100} aria-label={o.title}>
-                      <span className="absolute inset-y-0 left-0 rounded-r-[4px] bg-accent" style={{ width: `${o.progress}%` }} />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {priorities.length ? (
-            <div>
-              <h3 className="mb-2 text-[13px] font-semibold text-fog">Staff priorities</h3>
-              <ul className="flex flex-col gap-1.5">
-                {priorities.map((p) => (
-                  <li key={p.id} className="flex items-start gap-2 text-[14.5px] text-bone">
-                    <span aria-hidden className="mt-[9px] h-[2px] w-3 shrink-0 bg-accent" />
-                    <span>
-                      {p.title} {p.is_demo ? <DemoBadge className="ml-1 align-middle" /> : null}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-        <div>
-          <h3 className="mb-3 text-[13px] font-semibold text-fog">{isPlayer ? "Your latest feedback" : "Latest feedback"}</h3>
-          {data.feedback.length === 0 ? (
-            <p className="text-[14px] text-dim">
-              {isPlayer ? "No feedback for you yet." : "No feedback recorded yet. Coaches add it in Player Development."}
-            </p>
-          ) : (
-            <ul className="flex flex-col divide-y divide-line border-y border-line">
-              {data.feedback.map((f) => (
-                <li key={f.id} className="py-2.5">
-                  <p className="flex items-center gap-2 text-[14px] font-semibold text-bone">
-                    {f.player_nickname} <span className="font-normal text-fog">· {f.category}</span>
-                    {f.is_demo ? <DemoBadge /> : null}
-                  </p>
-                  {f.areas_to_improve ? <p className="line-clamp-2 text-[13.5px] text-fog">{f.areas_to_improve}</p> : null}
-                  <p className={clsx("text-[12px]", f.status === "resolved" ? "text-win" : "text-dim")}>
-                    {formatDay(f.given_on)} · {FEEDBACK_STATUS[f.status] ?? f.status}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </Panel>
-  );
-}

@@ -6,7 +6,17 @@ import { AgentPoolPicker, type AgentOpt } from "@/components/roster/agent-pool";
 import { useForm } from "@/lib/use-form";
 import { changePassword, updateMyPlayer, updateProfile } from "../actions";
 
-export function ProfileForm({ displayName, avatarUrl, userId }: { displayName: string; avatarUrl: string; userId: string }) {
+export function ProfileForm({
+  displayName,
+  avatarUrl,
+  userId,
+  isPlayer,
+}: {
+  displayName: string;
+  avatarUrl: string;
+  userId: string;
+  isPlayer: boolean;
+}) {
   const [state, formAction] = useForm(updateProfile);
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
@@ -19,7 +29,7 @@ export function ProfileForm({ displayName, avatarUrl, userId }: { displayName: s
         error={state.fields.display_name}
       />
       <ImageField
-        label="Profile photo"
+        label={isPlayer ? "Photo (also your roster photo)" : "Profile photo"}
         name="avatar_url"
         initial={avatarUrl}
         kind="avatar"
@@ -37,12 +47,11 @@ export function ProfileForm({ displayName, avatarUrl, userId }: { displayName: s
 export type MyPlayer = {
   nickname: string;
   real_name: string;
-  photo_url: string;
   main_agent_ids: string[];
   secondary_agent_ids: string[];
 };
 
-export function MyPlayerForm({ player, agents, userId }: { player: MyPlayer; agents: AgentOpt[]; userId: string }) {
+export function MyPlayerForm({ player, agents }: { player: MyPlayer; agents: AgentOpt[] }) {
   const [state, formAction] = useForm(updateMyPlayer);
   const v = state.values;
   return (
@@ -65,14 +74,6 @@ export function MyPlayerForm({ player, agents, userId }: { player: MyPlayer; age
           hint="Only team members see it."
         />
       </div>
-      <ImageField
-        label="Roster photo"
-        name="photo_url"
-        initial={player.photo_url}
-        kind="player"
-        folder={`people/${userId}`}
-        error={state.fields.photo_url}
-      />
       <div>
         <p className="mb-1 text-[13px] font-medium text-fog">Agent pool</p>
         <p className="mb-3 text-[13px] text-dim">Tap an agent once for main, twice for secondary, a third time to clear.</p>

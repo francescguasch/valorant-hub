@@ -13,7 +13,6 @@ import {
   Map,
   Settings,
   Swords,
-  TrendingUp,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -26,7 +25,6 @@ const ICONS: Record<SectionKey, LucideIcon> = {
   scouting: Binoculars,
   analytics: ChartNoAxesCombined,
   roster: Users,
-  development: TrendingUp,
   vod: Clapperboard,
   practice: CalendarDays,
   settings: Settings,

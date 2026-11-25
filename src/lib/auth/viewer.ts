@@ -16,7 +16,7 @@ export type Member = {
   displayName: string;
   playerId: string | null;
   avatarUrl: string | null;
-  /** Profile photo, or the linked roster photo when there is none. */
+  /** The photo shown for this person: the roster photo for linked players, the profile photo otherwise. */
   pictureUrl: string | null;
 };
 export type Visitor = { kind: "visitor"; reason: "signed-out" | "no-access" };
@@ -53,7 +53,8 @@ export const getViewer = cache(async (): Promise<Viewer> => {
     displayName: p.display_name,
     playerId: p.player_id,
     avatarUrl: p.avatar_url,
-    pictureUrl: p.avatar_url ?? p.player_photo,
+    // A player has one photo: the roster's.
+    pictureUrl: p.player_id ? (p.player_photo ?? p.avatar_url) : p.avatar_url,
   };
 });
 

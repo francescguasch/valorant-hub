@@ -21,7 +21,7 @@ export default async function NewVodPage({ searchParams }: { searchParams: Promi
           matches={o.matches}
           maps={o.maps}
           players={o.players}
-          initial={{ match_id: match && /^[0-9a-f-]{36}$/.test(match) ? match : "", map_id: "", round_number: "", video_timestamp: "", clip_url: "", player_id: "", category: "", what_happened: "", should_have_happened: "", improvement_action: "", assigned_player_id: "", status: "open", hasTask: false }}
+          initial={{ match_id: match && /^[0-9a-f-]{36}$/.test(match) ? match : "", map_id: "", round_number: "", video_timestamp: "", clip_url: "", player_id: "", category: "", what_happened: "", should_have_happened: "", improvement_action: "", assigned_player_id: "", status: "open" }}
         />
       </PageBody>
     </>

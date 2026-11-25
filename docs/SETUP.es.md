@@ -73,8 +73,8 @@ Esto crea todas las tablas, la seguridad, los mapas, los agentes, la plantilla d
 ## 6. Invitar al equipo
 
 1. **Settings → Members → Invite someone**.
-2. Elige el rol (Player, Coach u Owner). Para jugadores, elige su perfil del roster (Zach, JaxaPixel…) para que vean
-   su propio feedback. Solo aparecen los jugadores que aún no tienen cuenta.
+2. Elige el rol (Player, Coach u Owner). Para jugadores, elige su perfil del roster (Zach, JaxaPixel…) para que
+   puedan editar su propio perfil. Solo aparecen los jugadores que aún no tienen cuenta.
 3. Pulsa **Create invitation code** y envía el código o el enlace por privado (Discord, WhatsApp…).
    El código funciona una sola vez y caduca en los días que elijas.
 4. La persona abre el enlace, escribe su email y contraseña, y entra.
@@ -88,7 +88,7 @@ sin cuenta, sin poder editar. Cámbialo en **Settings → Visitor access**.
 **Antes de meter resultados reales:** borra los datos DEMO en **Settings → Data → Remove demo data**.
 
 **Notificaciones:** la campana (abajo a la izquierda en ordenador, arriba en el móvil) avisa de entrenamientos en las
-próximas 48 horas, seguimientos de feedback pendientes, sesiones sin resultados y tareas de VOD abiertas. Se van solas
+próximas 48 horas, sesiones sin resultados y revisiones de VOD abiertas más de una semana. Se van solas
 cuando el asunto queda resuelto.
 
 **Pizarras tácticas:** en cada estrategia, mapa, rival, VOD, entrenamiento y partido hay un bloque **Tactics boards**.
@@ -97,8 +97,12 @@ zonas, texto, marcadores y pasos numerados. Al guardar se crea también la image
 descargar (**Download image**). Si preferís dibujar en ValoPlant, pegad su imagen exportada con Ctrl+V dentro del
 editor (o en **Board → Image**) y el enlace en **Details**. Todas las pizarras están en **Map Playbook → Tactics boards**.
 
-**Perfiles:** cada persona cambia su nombre y su foto en **Settings → Your account**. Los jugadores vinculados al roster
-editan ahí también su nickname, nombre real, foto del roster y agentes.
+**Perfiles:** cada persona cambia su nombre y su foto en **Settings → Your account**. Para los jugadores, esa foto es
+también la del roster. Los jugadores vinculados editan ahí también su nickname, nombre real y agentes.
+
+**Ficha de jugador (Roster):** todos los partidos jugados con sus estadísticas, con filtros por mapa y agente y el
+botón Practice (scrims) / Officials; rendimiento por agente, por mapa y agente × mapa; y una comparación de dos
+selecciones (mapa + agente) con gráfico radar. Los datos salen del scoreboard de cada partido en Match Center.
 
 ## 7. Actualizaciones
 

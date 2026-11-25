@@ -14,8 +14,7 @@ export default async function AccountPage() {
     ? await withActor(actorOf(me), async (tx) => ({
         player: (
           await tx<MyPlayer[]>`
-            select p.nickname, coalesce(d.real_name, '') as real_name, coalesce(p.photo_url, '') as photo_url,
-                   p.main_agent_ids, p.secondary_agent_ids
+            select p.nickname, coalesce(d.real_name, '') as real_name, p.main_agent_ids, p.secondary_agent_ids
             from public.players p left join public.player_details d on d.player_id = p.id
             where p.id = ${playerId}`
         )[0],
@@ -27,7 +26,12 @@ export default async function AccountPage() {
   return (
     <div className="grid max-w-5xl gap-6 lg:grid-cols-2">
       <Panel title="Profile" description={`${me.email} · ${ROLE_LABEL[me.role]}`}>
-        <ProfileForm displayName={me.displayName} avatarUrl={me.avatarUrl ?? ""} userId={me.userId} />
+        <ProfileForm
+          displayName={me.displayName}
+          avatarUrl={me.pictureUrl ?? ""}
+          userId={me.userId}
+          isPlayer={Boolean(me.playerId)}
+        />
       </Panel>
       <Panel title="Password">
         <PasswordForm />
@@ -44,7 +48,7 @@ export default async function AccountPage() {
             </Link>
           }
         >
-          <MyPlayerForm player={data.player} agents={data.agents} userId={me.userId} />
+          <MyPlayerForm player={data.player} agents={data.agents} />
         </Panel>
       ) : null}
     </div>
