@@ -6,6 +6,7 @@ import { withActor } from "@/lib/db";
 import { boardCatalog, parentHref, type BoardParent } from "@/lib/data/boards";
 import { emptyScene } from "@/lib/boards/scene";
 import { BoardEditor } from "@/components/boards/board-editor";
+import { isShowcase } from "@/lib/presets";
 
 export const metadata: Metadata = { title: "New tactics board" };
 
@@ -18,7 +19,9 @@ export default async function NewBoardPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const viewer = await getViewer();
-  if (!isStaff(viewer)) redirect(viewer.kind === "member" ? "/boards" : "/login?next=%2Fboards");
+  // The showcase lets anyone try the editor; nothing is saved.
+  const sandbox = isShowcase() && !isStaff(viewer);
+  if (!isStaff(viewer) && !sandbox) redirect(viewer.kind === "member" ? "/boards" : "/login?next=%2Fboards");
   const sp = await searchParams;
   const kind = KINDS.find((k) => uuid.safeParse(sp[k]).success);
   const parent: BoardParent | null = kind ? { kind, id: sp[kind]! } : null;
@@ -84,6 +87,7 @@ export default async function NewBoardPage({
       parent={parent}
       parentLabel={data.label ?? "Tactics boards"}
       backHref={parentHref(parent, parent ? null : data.mapId)}
+      sandbox={sandbox}
     />
   );
 }

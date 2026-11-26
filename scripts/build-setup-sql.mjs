@@ -20,6 +20,9 @@ export const MIGRATIONS: { name: string; sql: string }[] = ${JSON.stringify(
   null,
   2,
 )};
+
+// Supabase pieces recreated on a plain Postgres database (see supabase/standalone/compat.sql).
+export const COMPAT_SQL: string = ${JSON.stringify(readFileSync("supabase/standalone/compat.sql", "utf8"))};
 `;
 writeFileSync("src/lib/migrations.generated.ts", generated);
 

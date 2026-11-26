@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getViewer, isStaff } from "@/lib/auth/viewer";
 import { getSettings } from "@/lib/data/settings";
 import { BrandingForm } from "./branding-form";
+import { currentPreset } from "@/lib/presets";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -14,5 +15,5 @@ export default async function BrandingPage() {
   const settings = await getSettings();
   const all = Intl.supportedValuesOf("timeZone");
   const timezones = [...COMMON, ...all.filter((tz) => !COMMON.includes(tz))];
-  return <BrandingForm settings={settings} timezones={timezones} />;
+  return <BrandingForm settings={settings} timezones={timezones} defaultHero={currentPreset().heroImage} />;
 }

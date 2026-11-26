@@ -44,7 +44,14 @@ export function NoticeBell({ count }: { count: number }) {
   );
 }
 
-export function UserBlock({ user }: { user: ShellUser }) {
+export function UserBlock({ user, showcase = false }: { user: ShellUser; showcase?: boolean }) {
+  if (!user && showcase) {
+    return (
+      <div className="border-t border-line p-4">
+        <p className="text-[13px] text-fog">Portfolio showcase. Fictional team and data, read-only.</p>
+      </div>
+    );
+  }
   if (!user) {
     return (
       <div className="border-t border-line p-4">
@@ -87,7 +94,17 @@ export function UserBlock({ user }: { user: ShellUser }) {
   );
 }
 
-export function Sidebar({ settings, user, locked }: { settings: TeamSettings; user: ShellUser; locked: SectionKey[] }) {
+export function Sidebar({
+  settings,
+  user,
+  locked,
+  showcase = false,
+}: {
+  settings: TeamSettings;
+  user: ShellUser;
+  locked: SectionKey[];
+  showcase?: boolean;
+}) {
   return (
     <div className="hidden border-r border-line bg-rail lg:block">
       <aside className="sticky top-0 flex h-dvh flex-col">
@@ -95,7 +112,7 @@ export function Sidebar({ settings, user, locked }: { settings: TeamSettings; us
         <div className="flex-1 overflow-y-auto pb-4 pt-1">
           <NavLinks locked={locked} />
         </div>
-        <UserBlock user={user} />
+        <UserBlock user={user} showcase={showcase} />
       </aside>
     </div>
   );

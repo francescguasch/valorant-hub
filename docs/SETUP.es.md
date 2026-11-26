@@ -152,6 +152,32 @@ La foto original del campus siempre se puede recuperar con **Use original photo*
 
 Mapas en rotación, agentes y roles de jugador: **Settings → Maps / Agents / Roles**.
 
+## 11. Otra web con el mismo código (Hawaii y portfolio)
+
+El mismo repositorio sirve para varias webs. Cada una es un **proyecto de Vercel distinto** con su propia base de datos y
+una variable `TEAM_PRESET` que dice qué web es:
+
+| `TEAM_PRESET` | Web | Base de datos |
+|---|---|---|
+| `und` (o sin poner) | University of North Dakota | Supabase |
+| `hawaii` | University of Hawaiʻi, con la foto del campus, la foto del equipo en Roster y los 7 jugadores con su cara | Supabase (el segundo proyecto gratis) |
+| `showcase` | Portfolio: un equipo pro ficticio con una temporada completa, sin inicio de sesión | Neon (gratis) |
+
+Pasos para cada web nueva:
+
+1. En Vercel, **Add New → Project** e importa el mismo repositorio.
+2. Antes de desplegar, en **Environment Variables** añade `TEAM_PRESET` con `hawaii` o `showcase`.
+3. Base de datos:
+   - **Hawaii:** pestaña **Storage → Supabase**, igual que en el paso 3. Supabase Free deja 2 proyectos activos en
+     total, contando todas las organizaciones de las que eres Owner o Admin: UND y Hawaii ocupan los dos.
+   - **Portfolio:** pestaña **Storage → Neon** (Postgres gratis). No añadas Supabase: sin Supabase la web es de solo
+     lectura para todo el mundo y la pizarra funciona en modo prueba (se dibuja y se descarga, no se guarda).
+4. Despliega. La primera visita crea las tablas y aplica la plantilla: nombres, fotos, jugadores y, en el portfolio,
+   los datos de la temporada. Solo pasa una vez y solo con la base de datos vacía; después todo se cambia desde
+   **Settings** y **Roster** como en UND.
+5. En Hawaii, saca el código del Owner como en el paso 4 (`select app.create_owner_invitation();` en el SQL Editor de
+   ese proyecto) y crea la cuenta en `/join`.
+
 ## Alternativa: claves a mano (sin la integración de Vercel)
 
 Si creas el proyecto directamente en <https://supabase.com>, copia estas variables en

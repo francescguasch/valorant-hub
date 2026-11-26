@@ -1081,6 +1081,10 @@ alter table public.strategies
   add column if not exists strong_points text,
   add column if not exists weak_points text;
 
+-- >>> 20261126000400_roster_photo.sql
+-- A team photo for the top of the Roster page (optional). Safe to run more than once.
+alter table public.team_settings add column if not exists roster_image_url text;
+
 -- >>> Record the migrations above as applied, so the app only runs newer ones.
 create table if not exists app.schema_migrations (name text primary key, applied_at timestamptz not null default now());
 insert into app.schema_migrations (name) values
@@ -1092,7 +1096,8 @@ insert into app.schema_migrations (name) values
   ('20261125000100_development_history'),
   ('20261126000100_self_service_profiles'),
   ('20261126000200_tactics_boards'),
-  ('20261126000300_gameplan_and_points')
+  ('20261126000300_gameplan_and_points'),
+  ('20261126000400_roster_photo')
 on conflict (name) do nothing;
 
 -- >>> First owner: the result of this line is a one-time invitation code.

@@ -1,6 +1,7 @@
 import "server-only";
 import type postgres from "postgres";
-import { MIGRATIONS } from "./migrations.generated";
+import { COMPAT_SQL, MIGRATIONS } from "./migrations.generated";
+import { applyPreset } from "./presets/apply";
 
 /**
  * Applies database migrations that haven't run yet, once per server instance.
@@ -18,6 +19,9 @@ export async function applyPendingMigrations(sql: postgres.Sql): Promise<string[
   const applied: string[] = [];
   await sql.begin(async (tx) => {
     await tx`select pg_advisory_xact_lock(727274)`;
+    // Plain Postgres (not Supabase): recreate the few Supabase pieces the migrations use.
+    const [auth] = await tx<{ ok: boolean }[]>`select to_regnamespace('auth') is not null as ok`;
+    if (!auth?.ok) await tx.unsafe(COMPAT_SQL);
     await tx`create schema if not exists app`;
     await tx`create table if not exists app.schema_migrations (name text primary key, applied_at timestamptz not null default now())`;
     const done = new Set((await tx<{ name: string }[]>`select name from app.schema_migrations`).map((r) => r.name));
@@ -36,6 +40,8 @@ export async function applyPendingMigrations(sql: postgres.Sql): Promise<string[
       await tx`insert into app.schema_migrations (name) values (${m.name})`;
       applied.push(m.name);
     }
+    const preset = await applyPreset(tx);
+    if (preset) applied.push(`preset:${preset}`);
   });
   if (applied.length) console.info(`[migrate] applied ${applied.join(", ")}`);
   return applied;

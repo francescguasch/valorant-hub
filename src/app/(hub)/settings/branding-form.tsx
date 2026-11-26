@@ -7,9 +7,16 @@ import { ImageField } from "@/components/ui/image-field";
 import type { TeamSettings } from "@/lib/data/settings";
 import { updateBranding } from "./actions";
 
-const DEFAULT_HERO = "/brand/campus-und.jpg";
-
-export function BrandingForm({ settings, timezones }: { settings: TeamSettings; timezones: string[] }) {
+export function BrandingForm({
+  settings,
+  timezones,
+  defaultHero,
+}: {
+  settings: TeamSettings;
+  timezones: string[];
+  /** This deployment's original campus photo (see src/lib/presets.ts). */
+  defaultHero: string;
+}) {
   const [state, formAction] = useForm(updateBranding);
   const [accent, setAccent] = useState(settings.accent_color);
   const [secondary, setSecondary] = useState(settings.secondary_color);
@@ -47,9 +54,17 @@ export function BrandingForm({ settings, timezones }: { settings: TeamSettings; 
           name="hero_image_url"
           initial={settings.hero_image_url}
           kind="hero"
-          resetTo={DEFAULT_HERO}
+          resetTo={defaultHero}
           wide
           error={state.fields.hero_image_url}
+        />
+        <ImageField
+          label="Team photo (Roster page cover, optional)"
+          name="roster_image_url"
+          initial={settings.roster_image_url ?? ""}
+          kind="roster"
+          wide
+          error={state.fields.roster_image_url}
         />
         <ImageField label="Team logo" name="logo_url" initial={settings.logo_url ?? ""} kind="logo" error={state.fields.logo_url} />
       </fieldset>

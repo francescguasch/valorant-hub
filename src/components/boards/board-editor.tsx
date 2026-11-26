@@ -132,12 +132,15 @@ export function BoardEditor({
   parent,
   parentLabel,
   backHref,
+  sandbox = false,
 }: {
   catalog: BoardCatalog;
   initial: EditorInitial;
   parent: BoardParentRef | null;
   parentLabel: string | null;
   backHref: string;
+  /** Showcase: everything works except saving and uploading. */
+  sandbox?: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(initial.title);
@@ -574,6 +577,7 @@ export function BoardEditor({
 
   const uploadBackground = useCallback(
     async (file: File) => {
+      if (sandbox) return setError("Uploading images is off in this showcase.");
       if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
         return setError("Use a PNG, JPG or WebP image.");
       if (file.size > 8 * 1024 * 1024) return setError("That image is over 8 MB.");
@@ -590,7 +594,7 @@ export function BoardEditor({
       commit({ ...sceneRef.current, bg: { kind: "image", url } });
       setNotice("Image set as the background. Draw on top of it.");
     },
-    [commit],
+    [commit, sandbox],
   );
 
   useEffect(() => {
@@ -608,11 +612,11 @@ export function BoardEditor({
   }, [uploadBackground]);
 
   useEffect(() => {
-    if (!dirty || saving) return;
+    if (!dirty || saving || sandbox) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, saving]);
+  }, [dirty, saving, sandbox]);
 
   // --- styling changes apply to the selection too -----------------------------
   const pickColor = (c: string) => {
@@ -637,6 +641,18 @@ export function BoardEditor({
   const arm = (pl: Placement) => {
     setPlacement(pl);
     setSelected(null);
+  };
+
+  const downloadPng = async () => {
+    const canvas = await renderBoard(scene, catalog, mapId, 1600);
+    const blob = await canvasToBlob(canvas, "image/png");
+    if (!blob) return setError("This browser couldn't turn the board into an image.");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(title || "board").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 
   // --- save -------------------------------------------------------------------
@@ -753,11 +769,22 @@ export function BoardEditor({
             <Link href={backHref} className={buttonClass("ghost")}>
               Cancel
             </Link>
-            <button type="button" onClick={save} disabled={saving} className={buttonClass("primary")}>
-              {saving ? "Saving…" : "Save board"}
-            </button>
+            {sandbox ? (
+              <button type="button" onClick={downloadPng} className={buttonClass("primary")}>
+                Download image
+              </button>
+            ) : (
+              <button type="button" onClick={save} disabled={saving} className={buttonClass("primary")}>
+                {saving ? "Saving…" : "Save board"}
+              </button>
+            )}
           </div>
         </div>
+        {sandbox ? (
+          <p className="text-[13px] text-fog">
+            Showcase mode: draw freely and download the image. Saving is off, so nothing you do here is kept.
+          </p>
+        ) : null}
         {error ? (
           <p role="alert" className="border-l-2 border-accent bg-accent/10 px-3 py-2 text-[14px] text-bone">
             {error}

@@ -41,6 +41,7 @@ const brandingSchema = z.object({
   timezone: z.string().refine((tz) => TIMEZONES.has(tz), "Pick a timezone from the list."),
   logo_url: imageUrl,
   hero_image_url: imageUrl.refine((v) => v !== "", "The home page needs a campus photo."),
+  roster_image_url: imageUrl,
 });
 
 export async function updateBranding(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -55,7 +56,8 @@ export async function updateBranding(_prev: FormState, formData: FormData): Prom
         university_name = ${v.university_name}, team_name = ${v.team_name}, hero_kicker = ${v.hero_kicker},
         hero_tagline = ${v.hero_tagline}, season_label = ${v.season_label}, accent_color = ${v.accent_color.toUpperCase()},
         secondary_color = ${v.secondary_color.toUpperCase()}, timezone = ${v.timezone},
-        logo_url = ${v.logo_url || null}, hero_image_url = ${v.hero_image_url}
+        logo_url = ${v.logo_url || null}, hero_image_url = ${v.hero_image_url},
+        roster_image_url = ${v.roster_image_url || null}
       where id`);
   } catch (e) {
     return { error: friendlyDbError(e), fields: {} };

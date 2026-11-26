@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { getSettings } from "@/lib/data/settings";
 import { TeamMark } from "@/components/shell/team-mark";
+import { isShowcase } from "@/lib/presets";
 
 // Branding and access come from the database on every request.
 export const dynamic = "force-dynamic";
@@ -22,7 +23,21 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           </span>
         </Link>
         <main className="flex flex-1 flex-col justify-center py-10">
-          <div className="w-full max-w-[380px]">{children}</div>
+          <div className="w-full max-w-[380px]">
+            {isShowcase() ? (
+              <div className="flex flex-col gap-4">
+                <h1 className="type-display text-[34px] font-extrabold text-bone">No sign-in here</h1>
+                <p className="text-fog">
+                  This is a read-only portfolio showcase with a fictional team. Every section is open without an account.
+                </p>
+                <Link href="/" className="text-bone underline underline-offset-4">
+                  Go to the dashboard
+                </Link>
+              </div>
+            ) : (
+              children
+            )}
+          </div>
         </main>
         <p className="text-[12px] text-dim">Private team platform. Access by invitation only.</p>
       </div>

@@ -10,6 +10,7 @@ export type TeamSettings = {
   season_label: string;
   logo_url: string | null;
   hero_image_url: string;
+  roster_image_url: string | null;
   accent_color: string;
   secondary_color: string;
   timezone: string;
@@ -20,7 +21,7 @@ export type TeamSettings = {
 /** Branding and access settings. Readable by everyone, including visitors. */
 export const getSettings = cache(async (): Promise<TeamSettings> => {
   const rows = await withActor(null, (tx) => tx<TeamSettings[]>`
-    select university_name, team_name, hero_kicker, hero_tagline, season_label, logo_url, hero_image_url,
+    select university_name, team_name, hero_kicker, hero_tagline, season_label, logo_url, hero_image_url, roster_image_url,
            accent_color, secondary_color, timezone, public_view_enabled, public_sections
     from public.team_settings where id`);
   return rows[0];

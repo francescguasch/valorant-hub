@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "../supabase/server";
+import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "../env";
 import { withActor, type Actor } from "../db";
 import { getSettings } from "../data/settings";
 import { sectionByKey, type SectionKey } from "../sections";
@@ -24,6 +25,8 @@ export type Viewer = Member | Visitor;
 
 /** Who is looking at this request. Resolved once per request. */
 export const getViewer = cache(async (): Promise<Viewer> => {
+  // Without Supabase Auth (the read-only showcase on plain Postgres) everyone is a visitor.
+  if (!SUPABASE_URL || !SUPABASE_PUBLIC_KEY) return { kind: "visitor", reason: "signed-out" };
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.auth.getClaims();
   const sub = data?.claims?.sub;

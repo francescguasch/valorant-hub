@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/data/settings";
 import { withActor } from "@/lib/db";
 import { getNotifications } from "@/lib/data/notifications";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
+import { isShowcase } from "@/lib/presets";
 import { NoticeBell, Sidebar, TeamBlock, UserBlock, type ShellUser } from "@/components/shell/sidebar";
 import { MobileNav } from "@/components/shell/mobile-nav";
 
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HubLayout({ children }: { children: React.ReactNode }) {
   const [viewer, settings] = await Promise.all([getViewer(), getSettings()]);
+  const showcase = isShowcase();
 
   const locked: SectionKey[] =
     viewer.kind === "member"
@@ -54,15 +56,26 @@ export default async function HubLayout({ children }: { children: React.ReactNod
         } as React.CSSProperties
       }
     >
-      <Sidebar settings={settings} user={user} locked={locked} />
+      <Sidebar settings={settings} user={user} locked={locked} showcase={showcase} />
       <div className="min-w-0">
         <MobileNav
           brand={<TeamBlock settings={settings} />}
-          footer={<UserBlock user={user} />}
+          footer={<UserBlock user={user} showcase={showcase} />}
           actions={user ? <NoticeBell count={user.notices} /> : null}
           locked={locked}
         />
-        {viewer.kind !== "member" ? (
+        {showcase ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-panel px-5 py-2.5 text-[13.5px] text-fog sm:px-8">
+            <Eye className="size-4 shrink-0 text-accent" aria-hidden />
+            <span>
+              Portfolio showcase: a fictional pro team and season. Everything is read-only, so explore freely, or{" "}
+              <Link href="/boards/new" className="text-bone underline underline-offset-4">
+                try the tactics board
+              </Link>
+              .
+            </span>
+          </div>
+        ) : viewer.kind !== "member" ? (
           <div className="flex items-center gap-2 border-b border-line bg-panel px-5 py-2.5 text-[13.5px] text-fog sm:px-8">
             <Eye className="size-4 shrink-0 text-accent" aria-hidden />
             <span>

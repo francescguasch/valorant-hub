@@ -134,11 +134,28 @@ the migrations on it (CI does this automatically). **Never point `TEST_DATABASE_
 The setup loads clearly marked DEMO opponents, matches, objectives and practice sessions. No demo data touches the
 real players. Remove it in **Settings → Data** (owner) before entering real results.
 
-## Reusing this for another university (e.g. Hawaii UHE)
+## One codebase, several deployments
 
-1. Create a new GitHub repository from this code, a **new** Supabase project and a **new** Vercel project.
-2. Run `supabase/setup.sql` in the new project, after editing the roster block in
-   `supabase/migrations/20261124000300_seed_catalog.sql` (then `npm run db:bundle`).
-3. Change `team_settings` defaults (university name, campus photo) in the core schema, or simply edit them in
-   **Settings → Team & branding** after the first login, and upload that university's own photo.
-4. Use new secrets everywhere. Nothing is shared between the two deployments.
+The same repository runs more than one site. Each Vercel project sets `TEAM_PRESET` and gets its own database:
+
+| `TEAM_PRESET` | Site | Database | Sign-in |
+|---|---|---|---|
+| `und` (default) | University of North Dakota | Supabase | Invitation codes |
+| `hawaii` | University of Hawaiʻi: campus photo, team photo on the Roster cover, the real squad with photos | Supabase (a second free project) | Invitation codes |
+| `showcase` | Portfolio: a fictional pro team ("Meridian Six") with a full season of data | Any Postgres, e.g. Neon (free) | None: read-only for everyone |
+
+How it works:
+
+- Presets live in `src/lib/presets.ts`. `src/lib/presets/apply.ts` runs once, right after the migrations, and only on a
+  fresh database (no accounts and no real matches). It sets the branding, replaces the roster and, for the showcase,
+  seeds the season from `src/lib/presets/showcase.ts`. The result is stored in `app.deployment`, so it never runs again
+  and never touches a database that already has data.
+- The showcase needs no Supabase. When the database has no `auth` schema, the migrator first runs
+  `supabase/standalone/compat.sql`, which adds the few Supabase roles, schemas and functions the migrations expect.
+  Without `NEXT_PUBLIC_SUPABASE_URL` every viewer is a visitor, every section is public, sign-in is hidden and the
+  tactics board works as a sandbox (draw and download a PNG, nothing is saved).
+- Everything a preset sets can still be changed later in **Settings → Team & branding** (names, photos, colours) and
+  **Roster** (players, roles, photos).
+
+To add another university, add an entry to `PRESETS` with its photos in `public/brand/<key>/`, then create a Vercel
+project with `TEAM_PRESET=<key>` and a new database. Use new secrets everywhere; nothing is shared between deployments.

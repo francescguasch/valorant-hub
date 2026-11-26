@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { actorOf, isStaff, requireMember } from "@/lib/auth/viewer";
+import { actorOf, getViewer, isStaff, requireMember } from "@/lib/auth/viewer";
+import { isShowcase } from "@/lib/presets";
 import { withActor } from "@/lib/db";
 import { boardsFor, SECTION_LABEL, type BoardSection } from "@/lib/data/boards";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
@@ -17,7 +18,7 @@ export default async function BoardsPage({
 }: {
   searchParams: Promise<{ map?: string; section?: string; side?: string }>;
 }) {
-  const me = await requireMember("/boards");
+  const me = isShowcase() ? await getViewer() : await requireMember("/boards");
   const sp = await searchParams;
   const { boards, catalog, maps } = await withActor(actorOf(me), async (tx) => ({
     ...(await boardsFor(tx, { kind: "all" })),

@@ -5,6 +5,7 @@ import { actorOf, getViewer, isStaff } from "@/lib/auth/viewer";
 import { withActor } from "@/lib/db";
 import { boardCatalog, getBoard } from "@/lib/data/boards";
 import { BoardEditor, type BoardParentRef } from "@/components/boards/board-editor";
+import { isShowcase } from "@/lib/presets";
 
 export const metadata: Metadata = { title: "Edit tactics board" };
 
@@ -12,7 +13,8 @@ export default async function EditBoardPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
   const viewer = await getViewer();
-  if (!isStaff(viewer)) redirect(viewer.kind === "member" ? `/boards/${id}` : `/login?next=%2Fboards%2F${id}`);
+  const sandbox = isShowcase() && !isStaff(viewer);
+  if (!isStaff(viewer) && !sandbox) redirect(viewer.kind === "member" ? `/boards/${id}` : `/login?next=%2Fboards%2F${id}`);
   const data = await withActor(actorOf(viewer), async (tx) => ({
     board: await getBoard(tx, id),
     catalog: await boardCatalog(tx),
@@ -45,6 +47,7 @@ export default async function EditBoardPage({ params }: { params: Promise<{ id: 
       parent={parent}
       parentLabel={b.title}
       backHref={`/boards/${b.id}`}
+      sandbox={sandbox}
     />
   );
 }
