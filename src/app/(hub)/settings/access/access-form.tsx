@@ -8,7 +8,17 @@ import { updateAccess } from "../actions";
 
 type Item = { key: string; label: string; blurb: string; risk: string | null };
 
-export function AccessForm({ enabled, selected, sections }: { enabled: boolean; selected: string[]; sections: Item[] }) {
+export function AccessForm({
+  enabled,
+  selected,
+  realNames,
+  sections,
+}: {
+  enabled: boolean;
+  selected: string[];
+  realNames: boolean;
+  sections: Item[];
+}) {
   const [state, formAction] = useForm(updateAccess);
   const [on, setOn] = useState(enabled);
   return (
@@ -35,7 +45,10 @@ export function AccessForm({ enabled, selected, sections }: { enabled: boolean; 
       <fieldset disabled={!on} className="flex flex-col gap-2 disabled:opacity-45">
         <legend className="type-display mb-3 text-[19px] font-bold">Sections visitors can open</legend>
         {sections.map((s) => (
-          <label key={s.key} className="flex cursor-pointer items-start gap-3 border-b border-line py-3 last:border-b-0">
+          <label
+            key={s.key}
+            className="flex cursor-pointer items-start gap-3 border-b border-line py-3 last:border-b-0"
+          >
             <input
               type="checkbox"
               name="sections"
@@ -57,6 +70,21 @@ export function AccessForm({ enabled, selected, sections }: { enabled: boolean; 
       </fieldset>
       {/* Keep the chosen sections when the master switch is off */}
       {!on ? selected.map((s) => <input key={s} type="hidden" name="sections" value={s} />) : null}
+
+      <label className="flex cursor-pointer items-start gap-3 border-t border-line pt-5">
+        <input
+          type="checkbox"
+          name="show_real_names"
+          defaultChecked={realNames}
+          className="mt-1 size-4 accent-[var(--accent)]"
+        />
+        <span>
+          <span className="block font-medium text-bone">Show players&apos; real names to visitors</span>
+          <span className="block text-[13.5px] text-fog">
+            The name under each nickname in Roster. Members always see it.
+          </span>
+        </span>
+      </label>
 
       <div>
         <SubmitButton>Save visitor access</SubmitButton>

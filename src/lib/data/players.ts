@@ -19,10 +19,15 @@ export type PlayerFull = {
 };
 
 const PLAYER_SELECT = `select p.id, p.nickname, p.photo_url, p.main_role_id, p.secondary_role_id, p.main_agent_ids,
-  p.secondary_agent_ids, p.active, p.is_demo, d.real_name, d.strengths, d.weaknesses, d.notes
-  from public.players p left join public.player_details d on d.player_id = p.id`;
+  p.secondary_agent_ids, p.active, p.is_demo, coalesce(d.real_name, rn.real_name) as real_name, d.strengths,
+  d.weaknesses, d.notes
+  from public.players p left join public.player_details d on d.player_id = p.id
+  left join app.public_real_names() rn on rn.player_id = p.id`;
 
-/** Player details (real name, strengths…) come back empty for visitors: RLS hides them. */
+/**
+ * Player details (strengths, notes…) come back empty for visitors: RLS hides them. The real name reaches visitors
+ * only when the owner allows it (Settings → Visitor access).
+ */
 export async function listPlayers(tx: Tx): Promise<PlayerFull[]> {
   return tx.unsafe<PlayerFull[]>(`${PLAYER_SELECT} order by p.active desc, p.sort_order, p.nickname`);
 }

@@ -39,6 +39,10 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
   {
     "name": "20261126000400_roster_photo",
     "sql": "-- A team photo for the top of the Roster page (optional). Safe to run more than once.\nalter table public.team_settings add column if not exists roster_image_url text;\n"
+  },
+  {
+    "name": "20261126000500_public_real_names",
+    "sql": "-- Real names on the roster.\n-- Members always see them. Visitors only when the owner turns it on in Settings → Visitor access.\nalter table public.team_settings add column if not exists show_real_names boolean not null default false;\n\ncreate or replace function app.public_real_names()\nreturns table (player_id uuid, real_name text)\nlanguage sql\nstable\nsecurity definer\nset search_path = public, pg_temp\nas $$\n  select d.player_id, d.real_name\n  from public.player_details d\n  where nullif(trim(d.real_name), '') is not null\n    and coalesce((select s.show_real_names from public.team_settings s where s.id), false)\n$$;\n\nrevoke all on function app.public_real_names() from public;\ngrant execute on function app.public_real_names() to anon, authenticated, service_role;\n"
   }
 ];
 

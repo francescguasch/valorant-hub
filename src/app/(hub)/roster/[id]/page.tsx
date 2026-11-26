@@ -188,7 +188,7 @@ export default async function PlayerPage({
                 {role || "Role not set"}
                 {!p.active ? <span className="ml-2 text-fog">· Inactive</span> : null}
               </p>
-              {isMember && p.real_name ? <p className="text-[14px] text-fog">{p.real_name}</p> : null}
+              {p.real_name ? <p className="text-[15px] text-bone/80">{p.real_name}</p> : null}
             </div>
           </div>
           <div className="flex flex-col items-start gap-3 lg:items-end">

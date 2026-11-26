@@ -1085,6 +1085,27 @@ alter table public.strategies
 -- A team photo for the top of the Roster page (optional). Safe to run more than once.
 alter table public.team_settings add column if not exists roster_image_url text;
 
+-- >>> 20261126000500_public_real_names.sql
+-- Real names on the roster.
+-- Members always see them. Visitors only when the owner turns it on in Settings → Visitor access.
+alter table public.team_settings add column if not exists show_real_names boolean not null default false;
+
+create or replace function app.public_real_names()
+returns table (player_id uuid, real_name text)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select d.player_id, d.real_name
+  from public.player_details d
+  where nullif(trim(d.real_name), '') is not null
+    and coalesce((select s.show_real_names from public.team_settings s where s.id), false)
+$$;
+
+revoke all on function app.public_real_names() from public;
+grant execute on function app.public_real_names() to anon, authenticated, service_role;
+
 -- >>> Record the migrations above as applied, so the app only runs newer ones.
 create table if not exists app.schema_migrations (name text primary key, applied_at timestamptz not null default now());
 insert into app.schema_migrations (name) values
@@ -1097,7 +1118,8 @@ insert into app.schema_migrations (name) values
   ('20261126000100_self_service_profiles'),
   ('20261126000200_tactics_boards'),
   ('20261126000300_gameplan_and_points'),
-  ('20261126000400_roster_photo')
+  ('20261126000400_roster_photo'),
+  ('20261126000500_public_real_names')
 on conflict (name) do nothing;
 
 -- >>> First owner: the result of this line is a one-time invitation code.

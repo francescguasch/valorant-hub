@@ -26,7 +26,7 @@ export async function applyPreset(tx: Tx): Promise<string | null> {
       update public.team_settings set university_name = ${s.university_name}, team_name = ${s.team_name},
         hero_kicker = ${s.hero_kicker}, hero_tagline = ${s.hero_tagline}, season_label = ${s.season_label},
         timezone = ${s.timezone}, accent_color = ${s.accent_color}, hero_image_url = ${preset.heroImage},
-        roster_image_url = ${preset.rosterImage ?? null}`;
+        roster_image_url = ${preset.rosterImage ?? null}, show_real_names = ${s.show_real_names ?? false}`;
 
     let roleOrder = 100;
     for (const role of preset.extraRoles ?? []) {

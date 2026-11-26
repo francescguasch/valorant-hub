@@ -22,6 +22,8 @@ export type Preset = {
     season_label: string;
     timezone: string;
     accent_color: string;
+    /** Visitors see real names under the nicknames. */
+    show_real_names?: boolean;
   };
   /** Replaces the starting roster; null keeps the one from the migrations. */
   roster: PresetPlayer[] | null;
@@ -63,9 +65,10 @@ const PRESETS: Record<PresetKey, Preset> = {
       season_label: "2026 / 2027",
       timezone: "Pacific/Honolulu",
       accent_color: "#FF4655",
+      show_real_names: true,
     },
     roster: [
-      // In-game names, real names from the team. Starting five first, then the rest of the squad.
+      // In-game names and real names, as the team gave them: top row of the photo, then bottom row.
       { nickname: "peps", realName: "Peyton", role: "Initiator", secondary: "IGL", photo: "/brand/hawaii/peps.jpg" },
       {
         nickname: "AmazingPenguin48",
@@ -75,7 +78,6 @@ const PRESETS: Record<PresetKey, Preset> = {
       },
       { nickname: "chizuru", realName: "Duke", role: "Controller / Smoker", photo: "/brand/hawaii/chizuru.jpg" },
       { nickname: "fracturrr", realName: "Wade", role: "Sentinel", photo: "/brand/hawaii/fracturrr.jpg" },
-      { nickname: "Destros", role: "Main Entry", photo: "/brand/hawaii/destros.jpg" },
       { nickname: "Ngoc Nga", realName: "Nga", photo: "/brand/hawaii/ngoc-nga.jpg" },
       { nickname: "wisteria", realName: "Zach", photo: "/brand/hawaii/wisteria.jpg" },
     ],

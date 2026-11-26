@@ -16,13 +16,17 @@ export type TeamSettings = {
   timezone: string;
   public_view_enabled: boolean;
   public_sections: string[];
+  show_real_names: boolean;
 };
 
 /** Branding and access settings. Readable by everyone, including visitors. */
 export const getSettings = cache(async (): Promise<TeamSettings> => {
-  const rows = await withActor(null, (tx) => tx<TeamSettings[]>`
+  const rows = await withActor(
+    null,
+    (tx) => tx<TeamSettings[]>`
     select university_name, team_name, hero_kicker, hero_tagline, season_label, logo_url, hero_image_url, roster_image_url,
-           accent_color, secondary_color, timezone, public_view_enabled, public_sections
-    from public.team_settings where id`);
+           accent_color, secondary_color, timezone, public_view_enabled, public_sections, show_real_names
+    from public.team_settings where id`,
+  );
   return rows[0];
 });

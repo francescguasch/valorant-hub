@@ -132,7 +132,10 @@ function PlayerCard({ p, catalog, stat }: { p: PlayerFull; catalog: Catalog; sta
           />
         </div>
         <div className="flex flex-1 flex-col gap-2 p-4">
-          <p className="type-display text-[26px] font-extrabold text-bone">{p.nickname}</p>
+          <div>
+            <p className="type-display text-[26px] font-extrabold text-bone">{p.nickname}</p>
+            {p.real_name ? <p className="text-[14px] text-bone/80">{p.real_name}</p> : null}
+          </div>
           <p className="text-[13.5px] text-fog">
             {main ?? "Role not set"}
             {secondary ? ` · ${secondary}` : ""}

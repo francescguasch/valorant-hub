@@ -24,7 +24,10 @@ const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a colour like #FF4655.");
 const imageUrl = z
   .string()
   .trim()
-  .refine((v) => v === "" || v.startsWith("/brand/") || /^https?:\/\//.test(v), "Upload an image or use a full https:// link.");
+  .refine(
+    (v) => v === "" || v.startsWith("/brand/") || /^https?:\/\//.test(v),
+    "Upload an image or use a full https:// link.",
+  );
 const TIMEZONES = new Set(Intl.supportedValuesOf("timeZone"));
 
 // -----------------------------------------------------------------------------
@@ -51,14 +54,17 @@ export async function updateBranding(_prev: FormState, formData: FormData): Prom
   if (!parsed.success) return { error: "Check the highlighted fields.", fields: fieldErrors(parsed.error) };
   const v = parsed.data;
   try {
-    await withActor(actorOf(me), (tx) => tx`
+    await withActor(
+      actorOf(me),
+      (tx) => tx`
       update public.team_settings set
         university_name = ${v.university_name}, team_name = ${v.team_name}, hero_kicker = ${v.hero_kicker},
         hero_tagline = ${v.hero_tagline}, season_label = ${v.season_label}, accent_color = ${v.accent_color.toUpperCase()},
         secondary_color = ${v.secondary_color.toUpperCase()}, timezone = ${v.timezone},
         logo_url = ${v.logo_url || null}, hero_image_url = ${v.hero_image_url},
         roster_image_url = ${v.roster_image_url || null}
-      where id`);
+      where id`,
+    );
   } catch (e) {
     return { error: friendlyDbError(e), fields: {} };
   }
@@ -73,10 +79,19 @@ export async function updateAccess(_prev: FormState, formData: FormData): Promis
   const me = await owner();
   if (!me) return denied;
   const enabled = formData.get("public_view_enabled") === "on";
-  const sections = formData.getAll("sections").map(String).filter((s) => (PUBLICABLE_SECTIONS as string[]).includes(s));
+  const realNames = formData.get("show_real_names") === "on";
+  const sections = formData
+    .getAll("sections")
+    .map(String)
+    .filter((s) => (PUBLICABLE_SECTIONS as string[]).includes(s));
   try {
-    await withActor(actorOf(me), (tx) => tx`
-      update public.team_settings set public_view_enabled = ${enabled}, public_sections = ${sections} where id`);
+    await withActor(
+      actorOf(me),
+      (tx) => tx`
+      update public.team_settings
+      set public_view_enabled = ${enabled}, public_sections = ${sections}, show_real_names = ${realNames}
+      where id`,
+    );
   } catch (e) {
     return { error: friendlyDbError(e), fields: {} };
   }
@@ -84,7 +99,9 @@ export async function updateAccess(_prev: FormState, formData: FormData): Promis
   return {
     error: null,
     fields: {},
-    success: enabled ? "Saved. Visitors with the link can view the sections you selected." : "Saved. The hub is now private to members.",
+    success: enabled
+      ? "Saved. Visitors with the link can view the sections you selected."
+      : "Saved. The hub is now private to members.",
   };
 }
 
@@ -109,8 +126,11 @@ export async function createInvitation(_prev: FormState, formData: FormData): Pr
     return { error: "Only the team owner can invite coaches or owners.", fields: {} };
   }
   if (v.role === "player" && v.player_id) {
-    const [taken] = await withActor(actorOf(me), (tx) => tx<{ nickname: string }[]>`
-      select p.nickname from public.profiles pr join public.players p on p.id = pr.player_id where pr.player_id = ${v.player_id}`);
+    const [taken] = await withActor(
+      actorOf(me),
+      (tx) => tx<{ nickname: string }[]>`
+      select p.nickname from public.profiles pr join public.players p on p.id = pr.player_id where pr.player_id = ${v.player_id}`,
+    );
     if (taken) {
       return {
         error: `${taken.nickname} already has an account. If they can't sign in, create a password reset code for them instead.`,
@@ -120,22 +140,33 @@ export async function createInvitation(_prev: FormState, formData: FormData): Pr
   }
   const code = generateCode();
   try {
-    await withActor(actorOf(me), (tx) => tx`
+    await withActor(
+      actorOf(me),
+      (tx) => tx`
       insert into public.invitations (code_hash, code_hint, role, player_id, email, note, created_by, expires_at)
       values (${hashCode(code)}, ${codeHint(code)}, ${v.role}, ${v.role === "player" && v.player_id ? v.player_id : null},
-              ${v.email || null}, ${v.note || null}, ${me.userId}, now() + make_interval(days => ${v.days}))`);
+              ${v.email || null}, ${v.note || null}, ${me.userId}, now() + make_interval(days => ${v.days}))`,
+    );
   } catch (e) {
     return { error: friendlyDbError(e), fields: {} };
   }
   revalidatePath("/settings/members");
-  return { error: null, fields: {}, success: "Invitation created. Copy the code now: it won't be shown again.", reveal: code };
+  return {
+    error: null,
+    fields: {},
+    success: "Invitation created. Copy the code now: it won't be shown again.",
+    reveal: code,
+  };
 }
 
 export async function revokeInvitation(formData: FormData) {
   const me = await staff();
   if (!me) return;
   const id = z.string().uuid().parse(formData.get("id"));
-  await withActor(actorOf(me), (tx) => tx`update public.invitations set revoked_at = now() where id = ${id} and used_at is null`);
+  await withActor(
+    actorOf(me),
+    (tx) => tx`update public.invitations set revoked_at = now() where id = ${id} and used_at is null`,
+  );
   revalidatePath("/settings/members");
 }
 
@@ -156,7 +187,8 @@ export async function updateMember(_prev: FormState, formData: FormData): Promis
   const v = parsed.data;
   try {
     await withActor(actorOf(me), async (tx) => {
-      if (v.player_id) await tx`update public.profiles set player_id = null where player_id = ${v.player_id} and id <> ${v.id}`;
+      if (v.player_id)
+        await tx`update public.profiles set player_id = null where player_id = ${v.player_id} and id <> ${v.id}`;
       await tx`update public.profiles set role = ${v.role}, player_id = ${v.player_id || null} where id = ${v.id}`;
     });
   } catch (e) {
@@ -188,8 +220,11 @@ export async function removeMember(_prev: FormState, formData: FormData): Promis
   if (!me) return denied;
   const id = z.string().uuid().parse(formData.get("id"));
   if (id === me.userId) return { error: "You can't remove your own account.", fields: {} };
-  const [target] = await withActor(actorOf(me), (tx) => tx<{ role: string; disabled: boolean }[]>`
-    select role, disabled from public.profiles where id = ${id}`);
+  const [target] = await withActor(
+    actorOf(me),
+    (tx) => tx<{ role: string; disabled: boolean }[]>`
+    select role, disabled from public.profiles where id = ${id}`,
+  );
   if (!target) return { error: "That member no longer exists.", fields: {} };
   const admin = createSupabaseAdmin();
   const { error } = await admin.auth.admin.deleteUser(id);
@@ -204,12 +239,18 @@ export async function createResetCode(_prev: FormState, formData: FormData): Pro
   const id = z.string().uuid().parse(formData.get("id"));
   const code = generateCode();
   try {
-    await withActor(actorOf(me), (tx) => tx`
+    await withActor(
+      actorOf(me),
+      (tx) => tx`
       insert into public.reset_codes (user_id, code_hash, created_by, expires_at)
-      values (${id}, ${hashCode(code)}, ${me.userId}, now() + interval '24 hours')`);
+      values (${id}, ${hashCode(code)}, ${me.userId}, now() + interval '24 hours')`,
+    );
   } catch (e) {
     const msg = friendlyDbError(e);
-    return { error: msg === "You don't have permission to do that." ? "Coaches can create reset codes for players only." : msg, fields: {} };
+    return {
+      error: msg === "You don't have permission to do that." ? "Coaches can create reset codes for players only." : msg,
+      fields: {},
+    };
   }
   return { error: null, fields: {}, success: "Reset code created. It works once, for 24 hours.", reveal: code };
 }
@@ -227,7 +268,11 @@ export async function setDemoData(_prev: FormState, formData: FormData): Promise
     return { error: friendlyDbError(e), fields: {} };
   }
   revalidatePath("/", "layout");
-  return { error: null, fields: {}, success: load ? "Demo data loaded." : "Demo data removed. Your real records were not touched." };
+  return {
+    error: null,
+    fields: {},
+    success: load ? "Demo data loaded." : "Demo data removed. Your real records were not touched.",
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -279,10 +324,15 @@ export async function updateMyPlayer(_prev: FormState, formData: FormData): Prom
   const v = await getViewer();
   if (v.kind !== "member" || !v.playerId) return denied;
   const fields: Record<string, string> = {};
-  const nickname = String(formData.get("nickname") ?? "").trim().slice(0, 30);
+  const nickname = String(formData.get("nickname") ?? "")
+    .trim()
+    .slice(0, 30);
   if (nickname.length < 2) fields.nickname = "Enter your nickname.";
   if (Object.keys(fields).length) return { error: "Check the highlighted fields.", fields };
-  const realName = String(formData.get("real_name") ?? "").trim().slice(0, 80) || null;
+  const realName =
+    String(formData.get("real_name") ?? "")
+      .trim()
+      .slice(0, 80) || null;
   const main = uuidList(formData, "main_agent");
   const secondary = uuidList(formData, "secondary_agent").filter((x) => !main.includes(x));
   const playerId = v.playerId;

@@ -23,5 +23,12 @@ export default async function AccessPage() {
     blurb: s.blurb,
     risk: RISK[s.key] ?? null,
   }));
-  return <AccessForm enabled={settings.public_view_enabled} selected={settings.public_sections} sections={sections} />;
+  return (
+    <AccessForm
+      enabled={settings.public_view_enabled}
+      selected={settings.public_sections}
+      realNames={settings.show_real_names}
+      sections={sections}
+    />
+  );
 }
