@@ -163,6 +163,10 @@ una variable `TEAM_PRESET` que dice qué web es:
 | `hawaii` | University of Hawaiʻi, con la foto del campus, la foto del equipo en Roster y los 7 jugadores con su cara | Supabase (el segundo proyecto gratis) |
 | `showcase` | Portfolio: un equipo pro ficticio con una temporada completa, sin inicio de sesión | Neon (gratis) |
 
+Ahora mismo hay tres proyectos en Vercel, todos desde este repositorio: `valorant-hub` (UND, base de datos
+`valorant-hub-db`), `valorant-hub-hawaii` (`valorant-hub-hawaii-db`, Supabase) y `valorant-hub-portfolio`
+(`valorant-hub-portfolio-db`, Neon). Cada `git push` a `main` actualiza los tres.
+
 Pasos para cada web nueva:
 
 1. En Vercel, **Add New → Project** e importa el mismo repositorio.
